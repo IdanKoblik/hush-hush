@@ -1,0 +1,3 @@
+[
+  {"directory": "/home/idank/Projects/personal/hush-hush", "file": "src/main.c", "command": "cc -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread -Iinclude  -c src/main.c"}
+]
