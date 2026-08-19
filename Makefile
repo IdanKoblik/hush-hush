@@ -12,6 +12,7 @@ COV_DIR  := coverage
 COV_OBJ  := $(COV_DIR)/obj
 
 BIN      := hh
+TEST_BIN := $(OBJ_DIR)/test_runner
 
 # Depenencies
 
@@ -23,6 +24,8 @@ SODIUM_LIBS   := $(shell pkg-config --libs libsodium)
 CFLAGS := -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread \
           -I$(INC_DIR) \
           $(SODIUM_CFLAGS)
+
+LDFLAGS := -Wl,-T,linker.ld
 
 LDLIBS := -pthread \
           $(SODIUM_LIBS)
@@ -48,7 +51,7 @@ FORMAT_SRCS := $(HDRS) $(SRCS) $(TEST_HDRS) $(TEST_SRCS)
 all: $(BIN) compile_commands.json
 
 $(BIN): $(OBJS)
-	$(CC) $(OBJS) -o $@ $(LDLIBS)
+	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(LDLIBS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(@D)
@@ -59,13 +62,13 @@ test: $(TEST_BIN)
 
 $(TEST_BIN): $(TEST_SRCS) $(TEST_OBJS)
 	@mkdir -p $(@D)
-	$(CC) $(TEST_CFLAGS) $(TEST_SRCS) $(TEST_OBJS) -o $@ $(LDLIBS)
+	$(CC) $(LDFLAGS) $(TEST_CFLAGS) $(TEST_SRCS) $(TEST_OBJS) -o $@ $(LDLIBS)
 
 COV_SRCS := $(filter-out $(SRC_DIR)/main.c,$(SRCS)) $(TEST_SRCS)
 COV_OBJS := $(COV_SRCS:%.c=$(COV_OBJ)/%.o)
 
 coverage: $(COV_OBJS)
-	$(CC) $(COV_OBJS) --coverage -o $(COV_DIR)/test_runner $(LDLIBS)
+	$(CC) $(LDFLAGS) $(COV_OBJS) --coverage -o $(COV_DIR)/test_runner $(LDLIBS)
 	./$(COV_DIR)/test_runner
 	lcov --capture --directory $(COV_OBJ) --output-file $(COV_DIR)/coverage.info
 	lcov --remove $(COV_DIR)/coverage.info '*/tests/*' '/usr/*' \
