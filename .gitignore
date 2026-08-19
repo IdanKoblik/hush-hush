@@ -1,3 +1,7 @@
+# Local
+build/*
+hh
+
 # Prerequisites
 *.d
 
