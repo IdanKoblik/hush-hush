@@ -5,7 +5,8 @@
 
 enum {
     EXEC_OK = 0,
-    EXEC_USAGE_ERROR = -1,
+    EXEC_GENERIC_ERROR = -1,
+    EXEC_USAGE_ERROR = -2,
 };
 
 struct Command {
@@ -13,7 +14,7 @@ struct Command {
     const char *description;
     const char *usage;
 
-    int (*exec)(int argc, const char *argv[]);
+    int (*exec)(int argc, char *argv[]);
 };
 
 #define COMMAND(cmd)                                     \

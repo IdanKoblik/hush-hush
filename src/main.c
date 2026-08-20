@@ -23,5 +23,27 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    const char *cmd_name = argv[1];
+    const struct Command *cmd = find_command(cmd_name);
+    argc -= 2;
+    argv += 2;
+
+    printf("%d", argc);
+    if (!cmd) {
+        ERROR("Subcommand %s was not found", cmd_name);
+        return 1;
+    }
+
+    int exec_status = cmd->exec(argc, argv);
+    if (exec_status == EXEC_USAGE_ERROR) {
+        printf("%s", cmd->usage);
+        return 1;
+    }
+
+    if (exec_status == EXEC_GENERIC_ERROR) {
+        ERROR("An error accrued while running %s subcommand", cmd->name);
+        return 1;
+    }
+
     return 0;
 }

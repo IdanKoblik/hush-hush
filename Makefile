@@ -4,6 +4,7 @@
 CC           := cc
 CLANG_FORMAT := clang-format
 
+LOCAL_LIB_DIR := libs
 INC_DIR  := include
 SRC_DIR  := src
 TEST_DIR := tests
@@ -23,11 +24,13 @@ SODIUM_LIBS   := $(shell pkg-config --libs libsodium)
 
 CFLAGS := -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread \
           -I$(INC_DIR) \
+          -I$(LOCAL_LIB_DIR) \
           $(SODIUM_CFLAGS)
 
 LDFLAGS := -Wl,-T,linker.ld
 
 LDLIBS := -pthread \
+          -lm \
           $(SODIUM_LIBS)
 
 # The test sources include greatest.h from tests/ directly.
@@ -71,7 +74,7 @@ coverage: $(COV_OBJS)
 	$(CC) $(LDFLAGS) $(COV_OBJS) --coverage -o $(COV_DIR)/test_runner $(LDLIBS)
 	./$(COV_DIR)/test_runner
 	lcov --capture --directory $(COV_OBJ) --output-file $(COV_DIR)/coverage.info
-	lcov --remove $(COV_DIR)/coverage.info '*/tests/*' '/usr/*' \
+	lcov --remove $(COV_DIR)/coverage.info '/usr/*' '*/libs/*' \
 		--output-file $(COV_DIR)/coverage.info
 	genhtml $(COV_DIR)/coverage.info --output-directory $(COV_DIR)/html
 	@echo "Coverage report: $(COV_DIR)/html/index.html"
