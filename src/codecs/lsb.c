@@ -1,7 +1,7 @@
 #include "codecs/lsb.h"
+#include "log.h"
 #include "stb_image.h"
 #include "stb_image_write.h"
-#include "log.h"
 #include "structs/image.h"
 
 #define LSB_FILTER 0XFE
@@ -9,6 +9,7 @@
 static int encode(const char *path, const char *output, void *ctx, const unsigned char *data, size_t data_len) {
     struct PngCtx *png = ctx;
 
+    INFO("Loading image: %s", path);
     unsigned char *pixels = stbi_load(
         path,
         &png->width,
@@ -26,14 +27,9 @@ static int encode(const char *path, const char *output, void *ctx, const unsigne
     size_t capacity_bits = pixels_len;
     size_t capacity_bytes = capacity_bits / 8;
 
-    printf(
-        "Image: %dx%d, %d channels\n"
-        "Capacity: %zu bytes\n",
-        png->width,
-        png->height,
-        png->channels,
-        capacity_bytes
-    );
+    INFO("Image: %dx%d, %d channels", png->width, png->height, png->channels);
+    INFO("Capacity: %zu bytes", capacity_bytes);
+    INFO("Data to encode: %zu bytes", data_len);
 
     size_t data_bits = data_len * 8;
     if (pixels_len < data_bits) {
@@ -42,6 +38,7 @@ static int encode(const char *path, const char *output, void *ctx, const unsigne
         return -1;
     }
 
+    DEBUG("Embedding %zu bits into pixel data", data_bits);
     for (size_t i = 0; i < data_bits; i++) {
         size_t byte_index = i / 8;
         size_t bit_index = i % 8;
@@ -50,20 +47,15 @@ static int encode(const char *path, const char *output, void *ctx, const unsigne
         pixels[i] = (pixels[i] & LSB_FILTER) | bit;
     }
 
-    if (stbi_write_png(
-        output,
-        png->width,
-        png->height,
-        png->channels,
-        pixels,
-        png->width * png->channels
-    ) < 0) {
+    DEBUG("Writing output image: %s", output);
+    if (stbi_write_png(output, png->width, png->height, png->channels, pixels, png->width * png->channels) < 0) {
         stbi_image_free(pixels);
         ERROR("Failed to write into the targeted file");
         return -1;
     }
 
     stbi_image_free(pixels);
+    INFO("Encoded successfully -> %s", output);
     return 0;
 }
 
@@ -72,7 +64,4 @@ static int decode(const char *path, void *ctx) {
     return -1;
 }
 
-const Codec LsbCodec = {
-    .encode = encode,
-    .decode = decode
-};
+const Codec LsbCodec = {.encode = encode, .decode = decode};

@@ -16,13 +16,8 @@ const struct Command *find_command(const char *name) {
 
     const struct Command *key_ptr = &key;
 
-    const struct Command **result = bsearch(
-        &key_ptr,
-        __start_commands,
-        COMMAND_COUNT,
-        sizeof(*__start_commands),
-        compare_commands
-    );
+    const struct Command **result =
+        bsearch(&key_ptr, __start_commands, COMMAND_COUNT, sizeof(*__start_commands), compare_commands);
 
     if (result == NULL)
         return NULL;

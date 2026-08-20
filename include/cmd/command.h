@@ -17,13 +17,11 @@ struct Command {
     int (*exec)(int argc, char *argv[]);
 };
 
-#define COMMAND(cmd)                                     \
-    static const struct Command *                        \
-        __attribute__((used, section("commands." #cmd))) \
-        command_##cmd = &(cmd)
+#define COMMAND(cmd) \
+    static const struct Command *__attribute__((used, section("commands." #cmd))) command_##cmd = &(cmd)
 
-extern const struct Command * __start_commands[];
-extern const struct Command * __stop_commands[];
+extern const struct Command *__start_commands[];
+extern const struct Command *__stop_commands[];
 
 #define COMMAND_COUNT ((size_t)(__stop_commands - __start_commands))
 

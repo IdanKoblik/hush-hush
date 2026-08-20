@@ -1,8 +1,8 @@
-#include <sodium.h>
-#include <string.h>
 #include "cli/usage.h"
 #include "cmd/command.h"
 #include "log.h"
+#include <sodium.h>
+#include <string.h>
 
 int main(int argc, char *argv[]) {
     if (argc > 1 && strcmp(argv[1], "--verbose") == 0) {

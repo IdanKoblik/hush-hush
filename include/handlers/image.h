@@ -1,8 +1,8 @@
 #ifndef IMAGE_H_
 #define IMAGE_H_
 
-#include <stddef.h>
 #include "stb_image.h"
+#include <stddef.h>
 
 enum FileType detect_image(const char *path);
 
