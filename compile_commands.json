@@ -1,9 +1,0 @@
-[
-  {"directory": "/home/idank/Projects/personal/hush-hush", "file": "src/cli/usage.c", "command": "cc -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread -Iinclude  -c src/cli/usage.c"}
-,  {"directory": "/home/idank/Projects/personal/hush-hush", "file": "src/cmd/command.c", "command": "cc -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread -Iinclude  -c src/cmd/command.c"}
-,  {"directory": "/home/idank/Projects/personal/hush-hush", "file": "src/cmd/encode.c", "command": "cc -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread -Iinclude  -c src/cmd/encode.c"}
-,  {"directory": "/home/idank/Projects/personal/hush-hush", "file": "src/log.c", "command": "cc -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread -Iinclude  -c src/log.c"}
-,  {"directory": "/home/idank/Projects/personal/hush-hush", "file": "src/main.c", "command": "cc -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread -Iinclude  -c src/main.c"}
-,  {"directory": "/home/idank/Projects/personal/hush-hush", "file": "tests/usage.c", "command": "cc -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread -Iinclude  -Itests -c tests/usage.c"}
-,  {"directory": "/home/idank/Projects/personal/hush-hush", "file": "tests/runner.c", "command": "cc -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread -Iinclude  -Itests -c tests/runner.c"}
-]

@@ -1,1 +1,2 @@
 tests/greatest.h -diff
+libs/stb_image.h -diff

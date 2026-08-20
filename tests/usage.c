@@ -34,7 +34,7 @@ TEST usage_exec_exists(void) {
     char output[1024];
     CAPTURE_STDOUT(output, print_usage("test"));
 
-    ASSERT_STR_EQ("test [verbose(optional)] [subcommand] <target> [options]\n", output);
+    ASSERT_STR_EQ("test [verbose (optional)] [subcommand] <target> [options]\n", output);
     PASS();
 }
 
@@ -42,7 +42,7 @@ TEST usage_exec_absent(void) {
     char output[1024];
     CAPTURE_STDOUT(output, print_usage(NULL));
 
-    ASSERT_STR_EQ("./hh [verbose(optional)] [subcommand] <target> [options]\n", output);
+    ASSERT_STR_EQ("./hh [verbose (optional)] [subcommand] <target> [options]\n", output);
     PASS();
 }
 
