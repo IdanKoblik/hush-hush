@@ -1,6 +1,7 @@
 # Local
 build/*
 hh
+compile_commands.json
 
 # Python
 .venv/*
