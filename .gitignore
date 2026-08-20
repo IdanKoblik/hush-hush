@@ -2,6 +2,9 @@
 build/*
 hh
 
+# Python
+.venv/*
+
 # Prerequisites
 *.d
 
