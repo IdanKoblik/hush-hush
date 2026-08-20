@@ -1,3 +1,3 @@
 # IN DEV STAGE
 
-![img](assets/image.png)
+![img](assets/hush.png)
