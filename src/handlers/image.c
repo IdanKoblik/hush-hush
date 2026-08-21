@@ -3,6 +3,7 @@
 #include "log.h"
 #include "structs/image.h"
 #include "utils/file.h"
+#include <stdio.h>
 #include <string.h>
 
 enum FileType detect_image(const char *path) {

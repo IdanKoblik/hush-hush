@@ -4,8 +4,6 @@
 #include "stb_image_write.h"
 #include "structs/image.h"
 
-#define LSB_FILTER 0XFE
-
 static int encode(const char *path, const char *output, void *ctx, const unsigned char *data, size_t data_len) {
     struct PngCtx *png = ctx;
 

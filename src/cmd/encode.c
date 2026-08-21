@@ -1,11 +1,10 @@
-#include "cmd/encode.h"
 #include "cmd/command.h"
 #include "handlers/image.h"
 #include "log.h"
 #include "utils/file.h"
 #include <string.h>
 
-int exec(int argc, char *argv[]) {
+static int exec(int argc, char *argv[]) {
     if (argc < 4)
         return EXEC_USAGE_ERROR;
 
@@ -61,7 +60,7 @@ int exec(int argc, char *argv[]) {
     return EXEC_OK;
 }
 
-static const struct Command encode_cmd = {.name = ENCODE_CMD_NAME,
+static const struct Command encode_cmd = {.name = "encode",
                                           .description = "Encodes a data isnside of a target file.\n",
                                           .usage = "encode <target_file> <data_file> -o <output_file>\n",
                                           .exec = exec};

@@ -28,7 +28,6 @@ int main(int argc, char *argv[]) {
     argc -= 2;
     argv += 2;
 
-    printf("%d", argc);
     if (!cmd) {
         ERROR("Subcommand %s was not found", cmd_name);
         return 1;
