@@ -16,7 +16,7 @@ TEST get_file_data_reads_file_contents(void) {
 
     unsigned char *data = NULL;
     size_t data_len = 0;
-    int result = get_file_data(path, &data, &data_len);
+    int result = get_file_raw_data(path, &data, &data_len);
 
     ASSERT_EQ(0, result);
     ASSERT(data != NULL);
@@ -31,7 +31,7 @@ TEST get_file_data_reads_file_contents(void) {
 TEST get_file_data_returns_neg_for_nonexistent(void) {
     unsigned char *data = NULL;
     size_t data_len = 0;
-    int result = get_file_data("/tmp/nonexistent_file_hush_hush", &data, &data_len);
+    int result = get_file_raw_data("/tmp/nonexistent_file_hush_hush", &data, &data_len);
 
     ASSERT(result < 0);
     PASS();
@@ -45,7 +45,7 @@ TEST get_file_data_reads_empty_file(void) {
 
     unsigned char *data = NULL;
     size_t data_len = 0;
-    int result = get_file_data(path, &data, &data_len);
+    int result = get_file_raw_data(path, &data, &data_len);
 
     ASSERT_EQ(0, result);
     ASSERT(data != NULL);

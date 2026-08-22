@@ -4,7 +4,6 @@
 CC           := cc
 CLANG_FORMAT := clang-format
 
-LOCAL_LIB_DIR := libs
 INC_DIR  := include
 SRC_DIR  := src
 TEST_DIR := tests
@@ -24,7 +23,6 @@ SODIUM_LIBS   := $(shell pkg-config --libs libsodium)
 
 CFLAGS := -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread \
           -I$(INC_DIR) \
-          -I$(LOCAL_LIB_DIR) \
           $(SODIUM_CFLAGS)
 
 LDFLAGS := -Wl,-T,linker.ld

@@ -13,7 +13,7 @@ enum FileType get_file_type(const char *target) {
     return TYPE_UNKNOWN; // I'm not insane, im just supporting multipale file types.
 }
 
-int get_file_data(const char *target, unsigned char **data, size_t *data_len) {
+int get_file_raw_data(const char *target, unsigned char **data, size_t *data_len) {
     FILE *file = fopen(target, "rb");
     if (!file)
         return -1;

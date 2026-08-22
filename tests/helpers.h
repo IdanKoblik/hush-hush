@@ -1,7 +1,7 @@
 #ifndef HELPERS_H_
 #define HELPERS_H_
 
-#include "stb_image_write.h"
+#include "stb.h"
 #include <stdio.h>
 #include <stdlib.h>
 

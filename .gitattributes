@@ -1,3 +1,5 @@
 *.h linguist-language=C
 tests/greatest.h -diff
-libs/stb_image.h -diff
+include/libs/stb_image.h -diff
+include/libs/stb_image_write.h -diff
+include/libs/flag.h -diff

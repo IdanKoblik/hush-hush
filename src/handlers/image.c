@@ -36,16 +36,17 @@ enum FileType detect_image(const char *path) {
     return TYPE_UNKNOWN;
 }
 
-int encode_image(const char *target, enum FileType type, const char *output, unsigned char *data, size_t data_len) {
+int encode_image(struct ImageCtx *ctx, unsigned char *data, size_t data_len) {
     int status = 0;
-    switch (type) {
+    switch (ctx->image_type) {
     case TYPE_PNG_IMAGE: {
-        struct PngCtx ctx = {0};
-        status = LsbCodec.encode(target, output, &ctx, data, data_len);
+        status = LsbCodec.encode(ctx, data, data_len);
         break;
     }
-    default:
+    default: {
+        ERROR("Unsupported file type");
         status = -1;
+    }    
     }
 
     return status; // TODO

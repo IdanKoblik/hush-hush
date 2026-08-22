@@ -1,17 +1,16 @@
-#ifndef STRUCT_IMAGE_H_
-#define STRUCT_IMAGE_H_
+#pragma once
 
-enum ImageChannel {
-    GRAYSCALE = 1,
-    GRAYSCALE_ALPHA = 2,
-    RGB = 3,
-    RGBA = 4,
-};
+#include "utils/file.h"
+#include "codecs/codec.h"
 
-struct PngCtx {
+struct ImageCtx {
     int height;
     int width;
     int channels;
-};
 
-#endif // STRUCT_IMAGE_H_
+    const char *source_file;
+    const char *output_file;
+
+    enum CodecType codec_type;
+    enum FileType image_type;
+};
