@@ -13,7 +13,7 @@ enum CodecType str_to_codec(const char *str);
 
 typedef struct Codec {
     int (*encode)(void *ctx, const unsigned char *data, size_t data_len);
-    int (*decode)(void *ctx);
+    int (*decode)(void *ctx, unsigned char **data, size_t *data_len);
 } Codec;
 
 #endif // CODEC_H_

@@ -46,3 +46,16 @@ int get_file_raw_data(const char *target, unsigned char **data, size_t *data_len
     fclose(file);
     return 0;
 }
+
+int set_file_raw_data(const char *target, const unsigned char *data, size_t data_len) {
+    FILE *file = fopen(target, "wb");
+    if (!file)
+        return -1;
+
+    if (data_len && fwrite(data, 1, data_len, file) != data_len) {
+        fclose(file);
+        return -1;
+    }
+
+    return fclose(file) == 0 ? 0 : -1;
+}

@@ -51,3 +51,13 @@ int encode_image(struct ImageCtx *ctx, unsigned char *data, size_t data_len) {
 
     return status; // TODO
 }
+
+int decode_image(struct ImageCtx *ctx, unsigned char **data, size_t *data_len) {
+    switch (ctx->image_type) {
+    case TYPE_PNG_IMAGE:
+        return LsbCodec.decode(ctx, data, data_len);
+    default:
+        ERROR("Unsupported file type");
+        return -1;
+    }
+}

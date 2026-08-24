@@ -3,45 +3,12 @@
 #include "log.h"
 #include "utils/file.h"
 #include "cli/args.h"
+#include "cli/prompt.h"
 #include "flag.h"
 #include "codecs/codec.h"
 #include <sodium.h>
 #include <stdlib.h>
 #include <string.h>
-#include <termios.h>
-#include <unistd.h>
-
-#define PASSPHRASE_MAX 256
-
-static int read_passphrase(char *out, size_t size) {
-    struct termios original;
-    int silent = isatty(STDIN_FILENO) && tcgetattr(STDIN_FILENO, &original) == 0;
-
-    if (silent) {
-        struct termios quiet = original;
-        quiet.c_lflag &= ~(tcflag_t)ECHO;
-        if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &quiet) != 0)
-            silent = 0;
-    }
-
-    printf("Passphrase (leave empty to disable encryption): ");
-    fflush(stdout);
-
-    char *line = fgets(out, (int)size, stdin);
-
-    if (silent) {
-        tcsetattr(STDIN_FILENO, TCSAFLUSH, &original);
-        printf("\n");
-    }
-
-    if (!line) {
-        out[0] = '\0';
-        return feof(stdin) ? 0 : -1;
-    }
-
-    out[strcspn(out, "\r\n")] = '\0';
-    return 0;
-}
 
 static int exec(int argc, char *argv[]) {
     const char *target = shift_args(&argc, &argv);    
@@ -78,7 +45,8 @@ static int exec(int argc, char *argv[]) {
     }
 
     char passphrase[PASSPHRASE_MAX];
-    if (read_passphrase(passphrase, sizeof(passphrase)) < 0) {
+    if (read_passphrase("Passphrase (leave empty to disable encryption): ", passphrase, sizeof(passphrase)) <
+        0) {
         ERROR("Failed to read the passphrase");
         return EXEC_GENERIC_ERROR;
     }

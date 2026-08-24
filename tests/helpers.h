@@ -4,6 +4,8 @@
 #include "stb.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 static inline char *create_test_png(int width, int height, int channels) {
     char path[] = "/tmp/test_XXXXXX";
