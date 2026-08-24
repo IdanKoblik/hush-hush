@@ -17,23 +17,13 @@ static void bitmap_set(unsigned char *bitmap, size_t index) {
     bitmap[index / 8] |= (unsigned char)(1u << (index % 8));
 }
 
-/*
- * stbi_load with 0 desired channels hands back 1 (grey), 2 (grey + alpha),
- * 3 (rgb) or 4 (rgba). The even counts are the ones carrying an alpha byte,
- * always last in the pixel.
- */
 static size_t color_channels(const struct ImageCtx *img) {
     size_t channels = (size_t)img->channels;
 
     return (channels == 2 || channels == 4) ? channels - 1 : channels;
 }
 
-/*
- * Alpha carries no visible information, so touching it is both wasteful and
- * suspicious. Slots only ever address colour bytes, which means the alpha byte
- * of every pixel is stepped over: on grey + alpha that is every second byte, on
- * rgba every fourth.
- */
+/* Skip alpha channel */
 static size_t slot_to_pixel(const struct ImageCtx *img, size_t slot) {
     size_t colors = color_channels(img);
     if (colors == (size_t)img->channels)
@@ -80,10 +70,6 @@ static void embed_bit(const struct ImageCtx *img, unsigned char *pixels, size_t 
     }
 }
 
-/*
- * Both codecs leave the bit in the same place, so reading never has to care
- * about which one wrote the image.
- */
 static unsigned char extract_bit(const struct ImageCtx *img, const unsigned char *pixels, size_t slot) {
     return pixels[slot_to_pixel(img, slot)] & 1;
 }
@@ -114,12 +100,6 @@ static void extract_sequential(const struct ImageCtx *img, const unsigned char *
         data_bit_set(out, i, extract_bit(img, pixels, start_slot + i));
 }
 
-/*
- * A keyed pseudo random walk over `range` slots. Slots already taken are
- * linearly probed over, which keeps the walk cheap and, more importantly,
- * reproducible: the decoder replays the exact same sequence to find the bits
- * back. Never ask for more slots than the range holds, the probe would spin.
- */
 struct Scatter {
     struct Prng prng;
     unsigned char *taken;
