@@ -13,4 +13,6 @@ struct ImageCtx {
 
     enum CodecType codec_type;
     enum FileType image_type;
+
+    const char *passphrase;
 };

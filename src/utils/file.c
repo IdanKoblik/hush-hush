@@ -9,8 +9,7 @@ enum FileType get_file_type(const char *target) {
     if (image_type != TYPE_UNKNOWN)
         return image_type;
 
-    // TODO add more file types
-    return TYPE_UNKNOWN; // I'm not insane, im just supporting multipale file types.
+    return TYPE_UNKNOWN;
 }
 
 int get_file_raw_data(const char *target, unsigned char **data, size_t *data_len) {
