@@ -217,7 +217,3 @@ Pull requests are welcome. Every pull request needs a `CHANGELOG.md` entry, or
 the `ci/skip-changelog` label if the change does not deserve one, and CI builds
 and tests the tree with both GCC and Clang before it can merge. Bug reports and
 feature requests have their own issue forms.
-
-## License
-
-[GPL-3.0](LICENSE).
