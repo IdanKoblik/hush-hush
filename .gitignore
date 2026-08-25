@@ -1,5 +1,6 @@
 # Local
 build/*
+coverage/*
 hh
 compile_commands.json
 
