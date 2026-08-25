@@ -115,24 +115,6 @@ jobs:
 
           echo "::notice::Found the CHANGELOG.md section for $version."
 
-  format:
-    name: Format
-    runs-on: ubuntu-latest
-    # Advisory for now: the tree has never been run through `make format`, and
-    # the vendored headers under include/libs are formatted as upstream ships
-    # them. Drop this line once `make format-check` is clean.
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install clang-format
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clang-format
-
-      - name: Check formatting
-        run: make format-check
-
   test:
     name: Test (${{ matrix.os }}, ${{ matrix.cc }})
     runs-on: ${{ matrix.os }}
@@ -266,6 +248,22 @@ jobs:
             dist/*.tar.gz
             dist/*.sha256
           if-no-files-found: error
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    needs: release-build
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-format
+
+      - name: Check formatting
+        run: make format-check
 
   publish:
     name: Publish release
