@@ -36,11 +36,6 @@ static int exec(int argc, char *argv[]) {
         return EXEC_GENERIC_ERROR;
     }
 
-    /*
-     * The container tells whether it is encrypted only once its preamble is
-     * read, so the passphrase is asked for up front and simply ignored by a
-     * plain container.
-     */
     char passphrase[PASSPHRASE_MAX];
     if (read_passphrase("Passphrase (leave empty if the data is not encrypted): ", passphrase, sizeof(passphrase)) <
         0) {
