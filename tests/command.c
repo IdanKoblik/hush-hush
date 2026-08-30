@@ -1,7 +1,7 @@
+#include "cmd/command.h"
 #include "greatest.h"
 #include <stdlib.h>
 #include <string.h>
-#include "cmd/command.h"
 
 TEST compare_commands_returns_neg_for_less(void) {
     const char *name_a = "alpha";

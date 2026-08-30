@@ -1,9 +1,9 @@
-#include "greatest.h"
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <assert.h>
 #include "cli/usage.h"
+#include "greatest.h"
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
 #define CAPTURE_STDOUT(output, code)                               \
     do {                                                           \

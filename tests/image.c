@@ -1,11 +1,11 @@
+#include "handlers/image.h"
 #include "greatest.h"
+#include "helpers.h"
+#include "utils/file.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "handlers/image.h"
-#include "utils/file.h"
-#include "helpers.h"
 
 TEST detect_image_finds_png(void) {
     char *path = create_test_png(2, 2, 4);

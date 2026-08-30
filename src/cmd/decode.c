@@ -37,8 +37,7 @@ static int exec(int argc, char *argv[]) {
     }
 
     char passphrase[PASSPHRASE_MAX];
-    if (read_passphrase("Passphrase (leave empty if the data is not encrypted): ", passphrase, sizeof(passphrase)) <
-        0) {
+    if (read_passphrase("Passphrase (leave empty if the data is not encrypted): ", passphrase, sizeof(passphrase)) < 0) {
         ERROR("Failed to read the passphrase");
         return EXEC_GENERIC_ERROR;
     }
@@ -85,9 +84,6 @@ static int exec(int argc, char *argv[]) {
     return EXEC_OK;
 }
 
-static const struct Command decode_cmd = {.name = "decode",
-                                          .description = "Decodes the data hidden inside of a target file.\n",
-                                          .usage = "Usage: decode <target_file> -o <output_file>\n",
-                                          .exec = exec};
+static const struct Command decode_cmd = {.name = "decode", .description = "Decodes the data hidden inside of a target file.\n", .usage = "Usage: decode <target_file> -o <output_file>\n", .exec = exec};
 
 COMMAND(decode_cmd);

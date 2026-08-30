@@ -26,8 +26,7 @@ static void fill_payload(unsigned char *payload) {
         payload[i] = (unsigned char)(i * 7 + 3);
 }
 
-static int encode_payload(const char *source, const char *output, const unsigned char *payload, enum CodecType codec,
-                          const char *passphrase) {
+static int encode_payload(const char *source, const char *output, const unsigned char *payload, enum CodecType codec, const char *passphrase) {
     struct ImageCtx ctx = {
         .source_file = source,
         .output_file = output,

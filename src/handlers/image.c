@@ -46,10 +46,10 @@ int encode_image(struct ImageCtx *ctx, unsigned char *data, size_t data_len) {
     default: {
         ERROR("Unsupported file type");
         status = -1;
-    }    
+    }
     }
 
-    return status; // TODO
+    return status;
 }
 
 int decode_image(struct ImageCtx *ctx, unsigned char **data, size_t *data_len) {

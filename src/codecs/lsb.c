@@ -1,4 +1,5 @@
 #include "codecs/lsb.h"
+#include "crypto/payload.h"
 #include "crypto/prng.h"
 #include "log.h"
 #include "stb.h"
@@ -83,16 +84,14 @@ static void data_bit_set(unsigned char *data, size_t index, unsigned char bit) {
     data[index / 8] |= (unsigned char)(bit << (index % 8));
 }
 
-static void embed_sequential(const struct ImageCtx *img, unsigned char *pixels, const unsigned char *data,
-                             size_t data_len, size_t start_slot) {
+static void embed_sequential(const struct ImageCtx *img, unsigned char *pixels, const unsigned char *data, size_t data_len, size_t start_slot) {
     size_t data_bits = data_len * 8;
 
     for (size_t i = 0; i < data_bits; i++)
         embed_bit(img, pixels, start_slot + i, data_bit(data, i));
 }
 
-static void extract_sequential(const struct ImageCtx *img, const unsigned char *pixels, unsigned char *out,
-                               size_t out_len, size_t start_slot) {
+static void extract_sequential(const struct ImageCtx *img, const unsigned char *pixels, unsigned char *out, size_t out_len, size_t start_slot) {
     size_t out_bits = out_len * 8;
 
     memset(out, 0, out_len);
@@ -137,9 +136,7 @@ static void scatter_clear(struct Scatter *walk) {
 }
 
 /* Spreads the payload over [start_slot, capacity_slots) in scatter order. */
-static int embed_scattered(const struct ImageCtx *img, unsigned char *pixels, const unsigned char *data,
-                           size_t data_len, size_t start_slot, size_t capacity_slots, const unsigned char *key,
-                           const unsigned char *nonce) {
+static int embed_scattered(const struct ImageCtx *img, unsigned char *pixels, const unsigned char *data, size_t data_len, size_t start_slot, size_t capacity_slots, const unsigned char *key, const unsigned char *nonce) {
     struct Scatter walk;
     if (scatter_init(&walk, capacity_slots - start_slot, key, nonce) < 0)
         return -1;
@@ -153,9 +150,7 @@ static int embed_scattered(const struct ImageCtx *img, unsigned char *pixels, co
     return 0;
 }
 
-static int extract_scattered(const struct ImageCtx *img, const unsigned char *pixels, unsigned char *out,
-                             size_t out_len, size_t start_slot, size_t capacity_slots, const unsigned char *key,
-                             const unsigned char *nonce) {
+static int extract_scattered(const struct ImageCtx *img, const unsigned char *pixels, unsigned char *out, size_t out_len, size_t start_slot, size_t capacity_slots, const unsigned char *key, const unsigned char *nonce) {
     struct Scatter walk;
     if (scatter_init(&walk, capacity_slots - start_slot, key, nonce) < 0)
         return -1;
@@ -174,14 +169,11 @@ static int extract_scattered(const struct ImageCtx *img, const unsigned char *pi
  * One pwhash call produces both keys: the first half seals the header and the
  * payload, the second half drives the scatter walk.
  */
-static int derive_keys(const char *passphrase, const unsigned char *salt, unsigned char *box_key,
-                       unsigned char *prng_key) {
+static int derive_keys(const char *passphrase, const unsigned char *salt, unsigned char *box_key, unsigned char *prng_key) {
     unsigned char material[crypto_secretbox_KEYBYTES + PRNG_KEYBYTES];
 
     DEBUG("Deriving keys from the passphrase");
-    if (crypto_pwhash(material, sizeof(material), passphrase, strlen(passphrase), salt,
-                      crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE,
-                      crypto_pwhash_ALG_DEFAULT) != 0) {
+    if (crypto_pwhash(material, sizeof(material), passphrase, strlen(passphrase), salt, crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE, crypto_pwhash_ALG_DEFAULT) != 0) {
         ERROR("Key derivation failed, out of memory");
         return -1;
     }
@@ -267,8 +259,7 @@ static void header_unpack_body(struct LsbHeader *header, const unsigned char *in
     memcpy(header->payload_nonce, in + LSB_BODY_NONCE_OFF, sizeof(header->payload_nonce));
 }
 
-static int encode_plain(const struct ImageCtx *img, unsigned char *pixels, const unsigned char *data, size_t data_len,
-                        size_t capacity_slots) {
+static int encode_plain(const struct ImageCtx *img, unsigned char *pixels, const unsigned char *data, size_t data_len, size_t capacity_slots) {
     size_t needed = LSB_PREAMBLE_PLAIN_LEN + data_len + LSB_END_MARKER_LEN;
     if (capacity_slots / 8 < needed) {
         ERROR("Image size is not big enough to embed the targeted data into it");
@@ -284,14 +275,12 @@ static int encode_plain(const struct ImageCtx *img, unsigned char *pixels, const
     DEBUG("Embedding %zu bytes sequentially, terminated by %s", data_len, LSB_END_MARKER);
     embed_sequential(img, pixels, preamble, preamble_len, 0);
     embed_sequential(img, pixels, data, data_len, preamble_len * 8);
-    embed_sequential(img, pixels, (const unsigned char *)LSB_END_MARKER, LSB_END_MARKER_LEN,
-                     (preamble_len + data_len) * 8);
+    embed_sequential(img, pixels, (const unsigned char *)LSB_END_MARKER, LSB_END_MARKER_LEN, (preamble_len + data_len) * 8);
 
     return 0;
 }
 
-static int encode_encrypted(const struct ImageCtx *img, unsigned char *pixels, const unsigned char *data,
-                            size_t data_len, size_t capacity_slots) {
+static int encode_encrypted(const struct ImageCtx *img, unsigned char *pixels, const unsigned char *data, size_t data_len, size_t capacity_slots) {
     size_t payload_len = data_len + crypto_secretbox_MACBYTES;
     size_t needed = LSB_PREAMBLE_ENC_LEN + LSB_HEADER_SEALED_LEN + payload_len;
 
@@ -329,15 +318,14 @@ static int encode_encrypted(const struct ImageCtx *img, unsigned char *pixels, c
     crypto_secretbox_easy(sealed_header, body, sizeof(body), header.header_nonce, box_key);
     sodium_memzero(body, sizeof(body));
 
-    unsigned char *payload = malloc(payload_len);
+    struct Payload *payload = encrypt_data(data, data_len, header.payload_nonce, box_key);
+
     if (!payload) {
-        ERROR("Failed to allocate the payload buffer");
+        ERROR("Failed to encrypt data");
         sodium_memzero(box_key, sizeof(box_key));
         sodium_memzero(prng_key, sizeof(prng_key));
         return -1;
     }
-
-    crypto_secretbox_easy(payload, data, data_len, header.payload_nonce, box_key);
     sodium_memzero(box_key, sizeof(box_key));
 
     unsigned char preamble[LSB_PREAMBLE_ENC_LEN];
@@ -349,12 +337,10 @@ static int encode_encrypted(const struct ImageCtx *img, unsigned char *pixels, c
     embed_sequential(img, pixels, sealed_header, sizeof(sealed_header), preamble_len * 8);
 
     DEBUG("Scattering %zu encrypted bytes over %zu slots", payload_len, capacity_slots - payload_start);
-    int status = embed_scattered(img, pixels, payload, payload_len, payload_start, capacity_slots, prng_key,
-                                 header.payload_nonce);
+    int status = embed_scattered(img, pixels, payload->body, payload->body_len, payload_start, capacity_slots, prng_key, header.payload_nonce);
 
     sodium_memzero(prng_key, sizeof(prng_key));
-    sodium_memzero(payload, payload_len);
-    free(payload);
+    payload_free(payload);
 
     return status;
 }
@@ -363,9 +349,7 @@ static int encode(void *ctx, const unsigned char *data, size_t data_len) {
     struct ImageCtx *img = ctx;
 
     INFO("Loading image: %s", img->source_file);
-    unsigned char *pixels = stbi_load(img->source_file, &img->width, &img->height, &img->channels,
-                                      0 // Any
-    );
+    unsigned char *pixels = stbi_load(img->source_file, &img->width, &img->height, &img->channels, 0 /* ANY */);
 
     if (!pixels) {
         ERROR("Failed to load the image (%s)", img->source_file);
@@ -382,8 +366,7 @@ static int encode(void *ctx, const unsigned char *data, size_t data_len) {
     INFO("Data to encode: %zu bytes", data_len);
     INFO("Encryption: %s", encrypted ? "on" : "off");
 
-    int status = encrypted ? encode_encrypted(img, pixels, data, data_len, capacity_slots)
-                           : encode_plain(img, pixels, data, data_len, capacity_slots);
+    int status = encrypted ? encode_encrypted(img, pixels, data, data_len, capacity_slots) : encode_plain(img, pixels, data, data_len, capacity_slots);
 
     if (status < 0) {
         stbi_image_free(pixels);
@@ -403,8 +386,7 @@ static int encode(void *ctx, const unsigned char *data, size_t data_len) {
     return 0;
 }
 
-static int decode_plain(const struct ImageCtx *img, const unsigned char *pixels, size_t capacity_slots,
-                        unsigned char **out, size_t *out_len) {
+static int decode_plain(const struct ImageCtx *img, const unsigned char *pixels, size_t capacity_slots, unsigned char **out, size_t *out_len) {
     size_t start_slot = LSB_PREAMBLE_PLAIN_LEN * 8;
     size_t max_len = capacity_slots / 8 - LSB_PREAMBLE_PLAIN_LEN;
 
@@ -443,8 +425,7 @@ static int decode_plain(const struct ImageCtx *img, const unsigned char *pixels,
     return -1;
 }
 
-static int decode_encrypted(const struct ImageCtx *img, const unsigned char *pixels, size_t capacity_slots,
-                            struct LsbHeader *header, unsigned char **out, size_t *out_len) {
+static int decode_encrypted(const struct ImageCtx *img, const unsigned char *pixels, size_t capacity_slots, struct LsbHeader *header, unsigned char **out, size_t *out_len) {
     if (!img->passphrase) {
         ERROR("The container is encrypted, a passphrase is required to open it");
         return -1;
@@ -494,8 +475,7 @@ static int decode_encrypted(const struct ImageCtx *img, const unsigned char *pix
     }
 
     DEBUG("Gathering %zu encrypted bytes from %zu slots", payload_len, capacity_slots - payload_start);
-    if (extract_scattered(img, pixels, payload, payload_len, payload_start, capacity_slots, prng_key,
-                          header->payload_nonce) < 0)
+    if (extract_scattered(img, pixels, payload, payload_len, payload_start, capacity_slots, prng_key, header->payload_nonce) < 0)
         goto cleanup;
 
     if (crypto_secretbox_open_easy(plain, payload, payload_len, header->payload_nonce, box_key) != 0) {
@@ -564,8 +544,7 @@ static int decode(void *ctx, unsigned char **data, size_t *data_len) {
         goto cleanup;
     }
 
-    extract_sequential(img, pixels, preamble + LSB_PREAMBLE_PLAIN_LEN, LSB_PREAMBLE_ENC_LEN - LSB_PREAMBLE_PLAIN_LEN,
-                       LSB_PREAMBLE_PLAIN_LEN * 8);
+    extract_sequential(img, pixels, preamble + LSB_PREAMBLE_PLAIN_LEN, LSB_PREAMBLE_ENC_LEN - LSB_PREAMBLE_PLAIN_LEN, LSB_PREAMBLE_PLAIN_LEN * 8);
     header_unpack_keys(&header, preamble);
 
     status = decode_encrypted(img, pixels, capacity_slots, &header, data, data_len);

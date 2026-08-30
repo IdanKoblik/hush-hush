@@ -1,7 +1,7 @@
 #include "cmd/command.h"
+#include "flag.h"
 #include "log.h"
 #include "stb.h"
-#include "flag.h"
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -22,14 +22,10 @@ int exec(int argc, char *argv[]) {
         ERROR("Line limit cannot be equal or less then 0");
         return EXEC_GENERIC_ERROR;
     }
-    
+
     int width, height, channels;
-    unsigned char *pixels = stbi_load(
-        target,
-        &width,
-        &height,
-        &channels,
-        0 // Any
+    unsigned char *pixels = stbi_load(target, &width, &height, &channels,
+                                      0 // Any
     );
 
     if (!pixels) {
@@ -65,16 +61,14 @@ int exec(int argc, char *argv[]) {
                 fputs(line, stdout);
                 lines++;
             }
-        } else fputs(line, stdout);
+        } else
+            fputs(line, stdout);
     }
 
     INFO("To see the rest of the inspect pipe the command to a text file.");
     return EXEC_OK;
 }
 
-static const struct Command inspect_cmd = {.name = "inspect",
-    .description = "Inspect data of an image",
-    .usage = "Usage: inspect <target_file> [-l <line_limit>]\n",
-    .exec = exec};
+static const struct Command inspect_cmd = {.name = "inspect", .description = "Inspect data of an image", .usage = "Usage: inspect <target_file> [-l <line_limit>]\n", .exec = exec};
 
 COMMAND(inspect_cmd);

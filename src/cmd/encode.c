@@ -1,39 +1,39 @@
+#include "cli/args.h"
+#include "cli/prompt.h"
 #include "cmd/command.h"
+#include "codecs/codec.h"
+#include "flag.h"
 #include "handlers/image.h"
 #include "log.h"
 #include "utils/file.h"
-#include "cli/args.h"
-#include "cli/prompt.h"
-#include "flag.h"
-#include "codecs/codec.h"
 #include <sodium.h>
 #include <stdlib.h>
 #include <string.h>
 
 static int exec(int argc, char *argv[]) {
-    const char *target = shift_args(&argc, &argv);    
+    const char *target = shift_args(&argc, &argv);
     const char *data_file = shift_args(&argc, &argv);
     if (!target || !data_file)
         return EXEC_USAGE_ERROR;
 
     char *output_file = NULL;
     char *method = NULL;
-   
+
     // THANKS TSODING
     argc++;
     argv--;
 
     flag_str_var(&output_file, "o", NULL, "Output file");
     flag_str_var(&method, "c", "lsbr", "Encoding method");
-    
+
     if (!flag_parse(argc, argv)) {
         flag_print_error(stderr);
         return EXEC_USAGE_ERROR;
     }
-   
+
     if (!output_file)
         return EXEC_USAGE_ERROR;
-    
+
     enum CodecType codec = str_to_codec(method);
     if (codec == CODEC_UNKNOWN)
         return EXEC_USAGE_ERROR;
@@ -45,8 +45,7 @@ static int exec(int argc, char *argv[]) {
     }
 
     char passphrase[PASSPHRASE_MAX];
-    if (read_passphrase("Passphrase (leave empty to disable encryption): ", passphrase, sizeof(passphrase)) <
-        0) {
+    if (read_passphrase("Passphrase (leave empty to disable encryption): ", passphrase, sizeof(passphrase)) < 0) {
         ERROR("Failed to read the passphrase");
         return EXEC_GENERIC_ERROR;
     }
@@ -69,15 +68,13 @@ static int exec(int argc, char *argv[]) {
 
     int encode_status = -1;
     if (type == TYPE_PNG_IMAGE) {
-        struct ImageCtx ctx = {
-            .source_file = target,
-            .output_file = output_file,
+        struct ImageCtx ctx = {.source_file = target,
+                               .output_file = output_file,
 
-            .image_type = type,
-            .codec_type = codec,
-            
-            .passphrase = passphrase[0] ? passphrase : NULL
-        };
+                               .image_type = type,
+                               .codec_type = codec,
+
+                               .passphrase = passphrase[0] ? passphrase : NULL};
 
         encode_status = encode_image(&ctx, data, data_len);
     }
@@ -92,9 +89,6 @@ static int exec(int argc, char *argv[]) {
     return EXEC_OK;
 }
 
-static const struct Command encode_cmd = {.name = "encode",
-                                          .description = "Encodes a data isnside of a target file.\n",
-                                          .usage = "Usage: encode <target_file> <data_file> -o <output_file> -c <codec>\n",
-                                          .exec = exec};
+static const struct Command encode_cmd = {.name = "encode", .description = "Encodes a data isnside of a target file.\n", .usage = "Usage: encode <target_file> <data_file> -o <output_file> -c <codec>\n", .exec = exec};
 
 COMMAND(encode_cmd);

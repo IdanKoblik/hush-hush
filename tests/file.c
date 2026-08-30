@@ -1,9 +1,9 @@
+#include "utils/file.h"
 #include "greatest.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "utils/file.h"
 
 TEST get_file_data_reads_file_contents(void) {
     const char *path = "/tmp/test_file_data_XXXXXX";
