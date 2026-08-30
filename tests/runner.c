@@ -6,6 +6,7 @@ SUITE_EXTERN(command_suite);
 SUITE_EXTERN(file_suite);
 SUITE_EXTERN(image_suite);
 SUITE_EXTERN(lsb_suite);
+SUITE_EXTERN(dct_suite);
 GREATEST_MAIN_DEFS();
 
 int main(int argc, char **argv) {
@@ -20,5 +21,6 @@ int main(int argc, char **argv) {
     RUN_SUITE(file_suite);
     RUN_SUITE(image_suite);
     RUN_SUITE(lsb_suite);
+    RUN_SUITE(dct_suite);
     GREATEST_MAIN_END();
 }

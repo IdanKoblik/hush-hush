@@ -19,17 +19,22 @@ TEST_BIN := $(OBJ_DIR)/test_runner
 SODIUM_CFLAGS := $(shell pkg-config --cflags libsodium)
 SODIUM_LIBS   := $(shell pkg-config --libs libsodium)
 
+JPEG_CFLAGS := $(shell pkg-config --cflags libjpeg)
+JPEG_LIBS   := $(shell pkg-config --libs libjpeg)
+
 # Flags
 
 CFLAGS := -Wall -Wextra -std=c17 -D_POSIX_C_SOURCE=200809L -pthread \
           -I$(INC_DIR) \
-          $(SODIUM_CFLAGS)
+          $(SODIUM_CFLAGS) \
+          $(JPEG_CFLAGS)
 
 LDFLAGS := -Wl,-T,linker.ld
 
 LDLIBS := -pthread \
           -lm \
-          $(SODIUM_LIBS)
+          $(SODIUM_LIBS) \
+          $(JPEG_LIBS)
 
 # The test sources include greatest.h from tests/ directly.
 TEST_CFLAGS := $(CFLAGS) -I$(TEST_DIR)

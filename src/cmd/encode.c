@@ -67,14 +67,15 @@ static int exec(int argc, char *argv[]) {
     }
 
     int encode_status = -1;
-    if (type == TYPE_PNG_IMAGE) {
+    if (is_image_file(type)) {
         struct ImageCtx ctx = {.source_file = target,
                                .output_file = output_file,
 
                                .image_type = type,
                                .codec_type = codec,
 
-                               .passphrase = passphrase[0] ? passphrase : NULL};
+                               .passphrase = passphrase[0] ? passphrase : NULL
+        };
 
         encode_status = encode_image(&ctx, data, data_len);
     }

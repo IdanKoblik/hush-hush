@@ -34,4 +34,30 @@ static inline char *create_test_png(int width, int height, int channels) {
     return strdup(path);
 }
 
+static inline char *create_test_jpg(int width, int height, int quality) {
+    char path[] = "/tmp/test_XXXXXX";
+    int fd = mkstemp(path);
+    if (fd < 0)
+        return NULL;
+    close(fd);
+
+    unsigned char *pixels = calloc((size_t)(width * height * 3), 1);
+    if (!pixels) {
+        unlink(path);
+        return NULL;
+    }
+
+    for (int i = 0; i < width * height * 3; i++)
+        pixels[i] = (unsigned char)(i % 256);
+
+    if (stbi_write_jpg(path, width, height, 3, pixels, quality) == 0) {
+        free(pixels);
+        unlink(path);
+        return NULL;
+    }
+
+    free(pixels);
+    return strdup(path);
+}
+
 #endif // HELPERS_H_

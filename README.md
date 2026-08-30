@@ -38,7 +38,9 @@
 
 Hush Hush hides one file inside another. For example give it a PNG and a payload, and it
 writes out a PNG that looks exactly like the one you handed it, carrying your
-bytes in the low bits of its pixels.
+bytes in the low bits of its pixels. Hand it a JPEG instead and the bytes go
+into the low bits of the quantised DCT coefficients, and the file is rewritten
+straight from those coefficients so nothing is requantised.
 
 Supply a passphrase and the payload is sealed with XSalsa20-Poly1305 before it
 goes in.
@@ -53,25 +55,26 @@ Linux, plus the following:
 | Dependency  | Used for                                        |
 | ----------- | ----------------------------------------------- |
 | libsodium   | Key derivation, secretbox, ChaCha20, memzero    |
-| pkg-config  | Locating libsodium at build time                |
+| libjpeg     | Reading and writing the DCT coefficients of JPEG carriers |
+| pkg-config  | Locating libsodium and libjpeg at build time    |
 | GNU ld      | The `commands` section the subcommand table lives in |
 
 Debian and Ubuntu:
 
 ```sh
-sudo apt install build-essential pkg-config libsodium-dev
+sudo apt install build-essential pkg-config libsodium-dev libjpeg-dev
 ```
 
 Fedora:
 
 ```sh
-sudo dnf install gcc make pkgconf-pkg-config libsodium-devel
+sudo dnf install gcc make pkgconf-pkg-config libsodium-devel libjpeg-turbo-devel
 ```
 
 Arch:
 
 ```sh
-sudo pacman -S base-devel pkgconf libsodium
+sudo pacman -S base-devel pkgconf libsodium libjpeg-turbo
 ```
 
 Optional: `clang-format` for the formatting targets, `lcov` for coverage, and
@@ -103,8 +106,11 @@ make clean
 ```
 
 `--verbose` comes before the subcommand and turns on the timestamped debug log.
-Only PNG carriers are supported; the type is decided by the file's magic bytes,
-not by its extension.
+PNG and JPEG carriers are supported; the type is decided by the file's magic
+bytes, not by its extension, and it picks the codec: LSB over pixels for PNG,
+LSB over DCT coefficients for JPEG. `-c` selects how a bit is written in either
+case, and a JPEG holds noticeably less than a PNG of the same size because only
+non-trivial AC coefficients are usable.
 
 ### Examples
 
@@ -134,6 +140,18 @@ Use LSB matching instead of replacement:
 
 ```sh
 ./hh encode photo.png notes.txt -o innocent.png -c lsbm
+```
+
+Same thing with a JPEG carrier:
+
+```sh
+./hh encode photo.jpg secrets.pdf -o innocent.jpg
+Passphrase (leave empty to disable encryption):
+[+] Image: 567x440, 3 channels
+[+] Capacity: 5095 bytes
+[+] Data to encode: 2048 bytes
+[+] Encryption: on
+[+] Encoded successfully -> innocent.jpg
 ```
 
 Watch what the encoder is doing while it works. Leaving the passphrase empty at

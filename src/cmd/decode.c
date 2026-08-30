@@ -48,7 +48,7 @@ static int exec(int argc, char *argv[]) {
     DEBUG("Target: %s, Output: %s", target, output_file);
 
     int decode_status = -1;
-    if (type == TYPE_PNG_IMAGE) {
+    if (is_image_file(type)) {
         struct ImageCtx ctx = {
             .source_file = target,
             .output_file = output_file,
