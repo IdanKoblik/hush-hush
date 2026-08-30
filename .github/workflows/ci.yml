@@ -40,6 +40,7 @@ env:
     build-essential
     pkg-config
     libsodium-dev
+    libjpeg-dev
   # Pull requests skip the changelog check by carrying this label.
   SKIP_CHANGELOG_LABEL: 'ci/skip-changelog'
 
@@ -143,11 +144,17 @@ jobs:
 
           head -c 4096 /dev/urandom > payload.bin
 
+          head -c 2048 /dev/urandom > small.bin
+
           for codec in lsbr lsbm; do
             for phrase in "correct horse battery staple" ""; do
               printf '%s\n' "$phrase" | ./hh encode assets/hush.png payload.bin -o "carrier-$codec.png" -c "$codec"
               printf '%s\n' "$phrase" | ./hh decode "carrier-$codec.png" -o "recovered-$codec.bin"
               ./devtools/checksum.sh payload.bin "recovered-$codec.bin"
+
+              printf '%s\n' "$phrase" | ./hh encode assets/hush.jpg small.bin -o "carrier-$codec.jpg" -c "$codec"
+              printf '%s\n' "$phrase" | ./hh decode "carrier-$codec.jpg" -o "recovered-jpeg-$codec.bin"
+              ./devtools/checksum.sh small.bin "recovered-jpeg-$codec.bin"
             done
           done
 

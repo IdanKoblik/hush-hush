@@ -1,6 +1,10 @@
 #include "utils/file.h"
 #include "handlers/image.h"
 
+int is_image_file(enum FileType type) {
+    return type == TYPE_PNG_IMAGE || type == TYPE_JPEG_IMAGE;
+}
+
 enum FileType get_file_type(const char *target) {
     enum FileType image_type = detect_image(target);
     if (image_type == TYPE_NOT_FOUND)
