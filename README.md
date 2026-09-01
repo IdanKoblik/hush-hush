@@ -1,237 +1,74 @@
-<div align="center">
-
-<img src="assets/hush.png" alt="Hush Hush" width="420">
-
-<h1>Hush Hush</h1>
-
-> Nothing to see here. Really.
-
-[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
-[![Language](https://img.shields.io/badge/language-C17-blue.svg)](https://en.wikipedia.org/wiki/C17_(C_standard_revision))
-[![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](#requirements)
-[![Crypto](https://img.shields.io/badge/crypto-libsodium-green.svg)](https://doc.libsodium.org/)
-[![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
-
-</div>
-
----
-
-## Table of Contents
-
-- [About](#about)
-- [Requirements](#requirements)
-- [Building](#building)
-- [Usage](#usage)
-  - [Examples](#examples)
-- [Development](#development)
-  - [Tests](#tests)
-  - [Coverage](#coverage)
-  - [Formatting](#formatting)
-  - [Devtools](#devtools)
-  - [Editor Integration](#editor-integration)
-- [Contributing](#contributing)
-- [License](#license)
-
----
-
-## About
-
-Hush Hush hides one file inside another. For example give it a PNG and a payload, and it
-writes out a PNG that looks exactly like the one you handed it, carrying your
-bytes in the low bits of its pixels. Hand it a JPEG instead and the bytes go
-into the low bits of the quantised DCT coefficients, and the file is rewritten
-straight from those coefficients so nothing is requantised.
-
-Supply a passphrase and the payload is sealed with XSalsa20-Poly1305 before it
-goes in.
-
-Leave the passphrase empty and the payload goes in as-is, sequentially,
-terminated by a marker. That mode is for convenience, not for secrecy.
+# Building
 
 ## Requirements
 
-Linux, plus the following:
+Unix, plus the following:
 
-| Dependency  | Used for                                        |
-| ----------- | ----------------------------------------------- |
-| libsodium   | Key derivation, secretbox, ChaCha20, memzero    |
-| libjpeg     | Reading and writing the DCT coefficients of JPEG carriers |
-| pkg-config  | Locating libsodium and libjpeg at build time    |
-| GNU ld      | The `commands` section the subcommand table lives in |
+| Dependency | Used for                                                  |
+| ---------- | --------------------------------------------------------- |
+| CMake 3.21 | Object libraries have to propagate through `INTERFACE` targets |
+| libsodium  | Key derivation, secretbox, ChaCha20, memzero              |
+| libjpeg    | Reading and writing the DCT coefficients of JPEG carriers |
+| pkg-config | Locating libsodium and libjpeg at configure time          |
+| GNU ld     | The `commands` section the subcommand table lives in      |
 
-Debian and Ubuntu:
-
-```sh
-sudo apt install build-essential pkg-config libsodium-dev libjpeg-dev
-```
-
-Fedora:
+## Configure and build
 
 ```sh
-sudo dnf install gcc make pkgconf-pkg-config libsodium-devel libjpeg-turbo-devel
+cmake -S . -B build
+cmake --build build -j
 ```
 
-Arch:
+`hh` lands in `build/`, static libraries in `build/lib/`. The build type
+defaults to `Release`; pass `-DCMAKE_BUILD_TYPE=Debug` for a debug build.
+
+Sources and headers are globbed recursively per directory with
+`CONFIGURE_DEPENDS`, so adding a file is enough, and the glob is re-run when the
+file set changes. Headers sit next to the sources they belong to, there is no
+mirrored `include/`: `core/` and `cli/` are each an include root, so a header at
+`core/codecs/lsb.h` is reached as `#include "codecs/lsb.h"`.
+
+## Options
+
+| Option                  | Default            | Effect                                |
+| ----------------------- | ------------------ | ------------------------------------- |
+| `HH_BUILD_CLI`          | `ON`               | Build the `hh` command line app       |
+| `HH_BUILD_TESTS`        | `ON` at top level  | Build the test binaries and register them with CTest |
+| `HH_WARNINGS_AS_ERRORS` | `OFF`              | `-Werror`, or `/WX` on MSVC           |
+| `HH_ENABLE_COVERAGE`    | `OFF`              | Instrument for gcov and lcov, GCC or Clang only |
 
 ```sh
-sudo pacman -S base-devel pkgconf libsodium libjpeg-turbo
+cmake -S . -B build -DHH_WARNINGS_AS_ERRORS=ON -DCMAKE_BUILD_TYPE=Debug
 ```
 
-Optional: `clang-format` for the formatting targets, `lcov` for coverage, and
-Python with Pillow for the image comparison devtool.
+Warnings and the shared compile definitions live on one interface target,
+`hushhush::options`, which everything else links, so a flag is set in one place.
 
-## Building
+## Tests
+
+Tests live next to the code they cover, in `{module}/tests/` 
+build into one binary each. The shared harness is in `testing/`: the vendored
+[greatest](https://github.com/silentbicycle/greatest) header and the fixture
+helpers, held by `hushhush::testing`. No test cases live there.
 
 ```sh
-make
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j
+ctest --test-dir build --output-on-failure
 ```
 
-That produces the `hh` binary in the project root and regenerates
-`compile_commands.json`. Sources and headers are discovered recursively, so new
-files under `src/` and `include/` are picked up without editing the Makefile.
+That runs `build/hh_{module}_tests`, registered with CTest
 
-Subcommands register themselves at link time: `COMMAND(cmd)` places a pointer
-into the `commands.*` section, `linker.ld` gathers those between
-`__start_commands` and `__stop_commands`, and `find_command` binary searches the
-result. Adding a subcommand means adding a file, nothing else.
+## Coverage
+
+Requires `lcov`, and GCC or Clang:
 
 ```sh
-make clean
+cmake -S . -B coverage -DCMAKE_BUILD_TYPE=Debug -DHH_ENABLE_COVERAGE=ON
+cmake --build coverage -j
+ctest --test-dir coverage
+
+./devtools/coverage.sh
 ```
 
-## Usage
-
-```
-./hh [--verbose] <subcommand> <target> [options]
-```
-
-`--verbose` comes before the subcommand and turns on the timestamped debug log.
-PNG and JPEG carriers are supported; the type is decided by the file's magic
-bytes, not by its extension, and it picks the codec: LSB over pixels for PNG,
-LSB over DCT coefficients for JPEG. `-c` selects how a bit is written in either
-case, and a JPEG holds noticeably less than a PNG of the same size because only
-non-trivial AC coefficients are usable.
-
-### Examples
-
-Hide a document in a photo, encrypted:
-
-```sh
-./hh encode photo.png secrets.pdf -o innocent.png
-Passphrase (leave empty to disable encryption):
-[+] Image: 1920x1080, 4 channels
-[+] Capacity: 777600 bytes
-[+] Data to encode: 41231 bytes
-[+] Encryption: on
-[+] Encoded successfully -> innocent.png
-```
-
-Take it back out:
-
-```sh
-./hh decode innocent.png -o secrets.pdf
-Passphrase (leave empty if the data is not encrypted):
-[+] Container: version 1, encryption on
-[+] Decoded 41231 bytes from innocent.png
-[+] Decoded successfully -> secrets.pdf
-```
-
-Use LSB matching instead of replacement:
-
-```sh
-./hh encode photo.png notes.txt -o innocent.png -c lsbm
-```
-
-Same thing with a JPEG carrier:
-
-```sh
-./hh encode photo.jpg secrets.pdf -o innocent.jpg
-Passphrase (leave empty to disable encryption):
-[+] Image: 567x440, 3 channels
-[+] Capacity: 5095 bytes
-[+] Data to encode: 2048 bytes
-[+] Encryption: on
-[+] Encoded successfully -> innocent.jpg
-```
-
-Watch what the encoder is doing while it works. Leaving the passphrase empty at
-the prompt writes a plain container instead of an encrypted one:
-
-```sh
-./hh --verbose encode photo.png notes.txt -o innocent.png
-```
-
-Read the raw low-bit stream of an image, one byte per line, as binary, hex and
-ASCII:
-
-```sh
-./hh inspect innocent.png -l 20
-```
-
-`inspect` prints the first `-l` lines when it is writing to a terminal, and
-everything when it is not, so pipe it to a file to read the whole stream:
-
-```sh
-./hh inspect innocent.png > bits.txt
-```
-
-## Development
-
-### Tests
-
-```sh
-make test
-```
-
-Every production object except `main.o` is linked into the test runner, which is
-built on the vendored [greatest](https://github.com/silentbicycle/greatest)
-header.
-
-### Coverage
-
-Requires `lcov`:
-
-```sh
-make coverage
-```
-
-The HTML report lands in `coverage/html/index.html`.
-
-### Formatting
-
-```sh
-make format        # rewrite sources in place
-make format-check  # fail if anything is unformatted
-```
-
-The style is in `.clang-format`: 4 spaces, 125 columns, pointers bound to the
-name.
-
-### Devtools
-
-```sh
-./devtools/checksum.sh original.pdf recovered.pdf
-```
-
-Compares two files by SHA-256, which is how a round trip is confirmed to be
-lossless.
-
-```sh
-python3 devtools/compare_image.py carrier.png output.png
-```
-
-Reports how many pixels the encoder touched and by how much, which is the quick
-way to see the difference between `lsbr` and `lsbm`.
-
-### Editor Integration
-
-`make` regenerates `compile_commands.json`, so `clangd` picks up the include
-paths and the libsodium flags with no extra configuration. `.clangd`,
-`.editorconfig` and `.clang-format` are checked in.
-
-## Contributing
-
-Pull requests are welcome. Every pull request needs a `CHANGELOG.md` entry, or
-the `ci/skip-changelog` label if the change does not deserve one, and CI builds
-and tests the tree with both GCC and Clang before it can merge. Bug reports and
-feature requests have their own issue forms.
+The report lands in `coverage/html/index.html`.
