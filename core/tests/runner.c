@@ -1,8 +1,6 @@
 #include "greatest.h"
 #include <sodium.h>
 
-/* Add a SUITE_EXTERN and a RUN_SUITE line per suite. */
-
 GREATEST_MAIN_DEFS();
 
 int main(int argc, char **argv) {
