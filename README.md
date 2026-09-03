@@ -1,3 +1,159 @@
+<div align="center">
+
+<img src="assets/hush.png" alt="Hush Hush" width="420">
+
+<h1>Hush Hush</h1>
+
+> Nothing to see here. Really.
+
+[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![Language](https://img.shields.io/badge/language-C17-blue.svg)](https://en.wikipedia.org/wiki/C17_(C_standard_revision))
+[![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](#requirements)
+[![Crypto](https://img.shields.io/badge/crypto-libsodium-green.svg)](https://doc.libsodium.org/)
+[![License](https://img.shields.io/badge/license-GPL--3.0-orange.svg)](LICENSE)
+
+</div>
+
+# Requirements
+
+Linux, and libsodium and libjpeg at runtime. Building additionally needs a C17
+compiler (GCC or Clang), CMake 3.21 or newer, and pkg-config.
+
+```sh
+# Debian and Ubuntu
+sudo apt install build-essential cmake pkg-config libsodium-dev libjpeg-dev
+
+# Arch
+sudo pacman -S base-devel cmake libsodium libjpeg-turbo
+
+# Fedora
+sudo dnf install gcc cmake pkgconf-pkg-config libsodium-devel libjpeg-turbo-devel
+```
+
+# Installation
+
+## From a release
+
+Each [release](https://github.com/IdanKoblik/hush-hush/releases) ships one
+tarball per Ubuntu build, holding the `hh` binary, the static library and its
+headers, alongside a single `checksums.txt` covering every tarball. Pick the
+build matching your distribution; the `ubuntu-22.04` one links against an older
+glibc and so runs in more places.
+
+```sh
+VERSION=0.1.1
+NAME="hush-hush-${VERSION}-linux-$(uname -m)-ubuntu-24.04"
+BASE="https://github.com/IdanKoblik/hush-hush/releases/download/v${VERSION}"
+
+curl -LO "$BASE/$NAME.tar.gz"
+curl -LO "$BASE/checksums.txt"
+
+sha256sum --ignore-missing -c checksums.txt
+tar -xzf "$NAME.tar.gz"
+```
+
+## From source
+
+```sh
+git clone https://github.com/IdanKoblik/hush-hush.git
+cd hush-hush
+
+cmake -S . -B build
+cmake --build build -j
+sudo cmake --install build
+```
+
+That installs `hh` into `CMAKE_INSTALL_PREFIX/bin`, `/usr/local/bin` by default.
+Pass `--prefix ~/.local` to install without `sudo`. Only the CLI has an install
+rule; to use the library, build it and point at `build/lib/libhushhush.a` and
+the headers in `core/` where they sit.
+
+Skipping the install step is fine too: the binary runs from `build/hh`. See
+[Building](#building) for the options, the test suite and coverage.
+
+# Usage
+
+```
+./hh [--verbose] <subcommand> <target> [options]
+```
+
+`--verbose` comes before the subcommand and turns on the timestamped debug log.
+PNG and JPEG carriers are supported; the type is decided by the file's magic
+bytes, not by its extension, and it picks the codec: LSB over pixels for PNG,
+LSB over DCT coefficients for JPEG. `-c` selects how a bit is written in either
+case, and a JPEG holds noticeably less than a PNG of the same size because only
+non-trivial AC coefficients are usable.
+
+## Examples
+
+Hide a document in a photo, encrypted:
+
+```sh
+./hh encode photo.png secrets.pdf -o innocent.png
+Passphrase (leave empty to disable encryption):
+[+] Image: 1920x1080, 4 channels
+[+] Capacity: 777600 bytes
+[+] Data to encode: 41231 bytes
+[+] Encryption: on
+[+] Encoded successfully -> innocent.png
+```
+
+Take it back out:
+
+```sh
+./hh decode innocent.png -o secrets.pdf
+Passphrase (leave empty if the data is not encrypted):
+[+] Container: version 1, encryption on
+[+] Decoded 41231 bytes from innocent.png
+[+] Decoded successfully -> secrets.pdf
+```
+
+Use LSB matching instead of replacement:
+
+```sh
+./hh encode photo.png notes.txt -o innocent.png -c lsbm
+```
+
+Same thing with a JPEG carrier:
+
+```sh
+./hh encode photo.jpg secrets.pdf -o innocent.jpg
+Passphrase (leave empty to disable encryption):
+[+] Image: 567x440, 3 channels
+[+] Capacity: 5095 bytes
+[+] Data to encode: 2048 bytes
+[+] Encryption: on
+[+] Encoded successfully -> innocent.jpg
+```
+
+Watch what the encoder is doing while it works. Leaving the passphrase empty at
+the prompt writes a plain container instead of an encrypted one:
+
+```sh
+./hh --verbose encode photo.png notes.txt -o innocent.png
+```
+
+Read the raw low-bit stream of an image, one byte per line, as binary, hex and
+ASCII:
+
+```sh
+./hh inspect innocent.png -l 20
+```
+
+`inspect` prints the first `-l` lines when it is writing to a terminal, and
+everything when it is not, so pipe it to a file to read the whole stream:
+
+```sh
+./hh inspect innocent.png > bits.txt
+```
+
+# Editor Integration
+
+Configuring the build regenerates `compile_commands.json` and links it into the
+source root, so `clangd` picks up the include paths and the libsodium flags with
+no extra configuration. `.clangd`, `.editorconfig` and `.clang-format` are
+checked in.
+
 # Building
 
 ## Configure and build
@@ -69,3 +225,10 @@ ctest --test-dir coverage
 ```
 
 The report lands in `coverage/html/index.html`.
+
+# Contributing
+
+Pull requests are welcome. Every pull request needs a `CHANGELOG.md` entry, or
+the `ci/skip-changelog` label if the change does not deserve one, and CI builds
+and tests the tree with both GCC and Clang before it can merge. Bug reports and
+feature requests have their own issue forms.
