@@ -83,7 +83,6 @@ jobs:
         with:
           name: ${{ steps.package.outputs.name }}
           path: |
-            dist/*.tar.gz
             dist/hh-*
             dist/libhushhush-*.a
           if-no-files-found: error
