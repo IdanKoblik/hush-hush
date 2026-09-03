@@ -1,0 +1,5 @@
+*.h linguist-language=C
+testing/greatest.h -diff
+third_party/stb_image.h -diff
+third_party/stb_image_write.h -diff
+third_party/flag.h -diff
