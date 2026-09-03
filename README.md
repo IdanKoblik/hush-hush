@@ -14,22 +14,6 @@
 
 </div>
 
-# Requirements
-
-Linux, and libsodium and libjpeg at runtime. Building additionally needs a C17
-compiler (GCC or Clang), CMake 3.21 or newer, and pkg-config.
-
-```sh
-# Debian and Ubuntu
-sudo apt install build-essential cmake pkg-config libsodium-dev libjpeg-dev
-
-# Arch
-sudo pacman -S base-devel cmake libsodium libjpeg-turbo
-
-# Fedora
-sudo dnf install gcc cmake pkgconf-pkg-config libsodium-devel libjpeg-turbo-devel
-```
-
 # Installation
 
 ## From a release
