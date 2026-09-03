@@ -25,8 +25,11 @@ defaults to `Release`; pass `-DCMAKE_BUILD_TYPE=Debug` for a debug build.
 Sources and headers are globbed recursively per directory with
 `CONFIGURE_DEPENDS`, so adding a file is enough, and the glob is re-run when the
 file set changes. Headers sit next to the sources they belong to, there is no
-mirrored `include/`: `core/` and `cli/` are each an include root, so a header at
-`core/codecs/lsb.h` is reached as `#include "codecs/lsb.h"`.
+mirrored `include/`.
+
+`hushhush::core` links libsodium and libjpeg `PUBLIC`, so their headers come
+along with it and the CLI does not restate them. Note that `jpeglib.h` is not
+self contained: `stddef.h` and `stdio.h` have to be included ahead of it.
 
 ## Options
 

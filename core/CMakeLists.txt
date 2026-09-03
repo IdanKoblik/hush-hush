@@ -1,23 +1,12 @@
-# The core library: codecs, crypto, image handling and the shared utilities.
-#
-# Headers live next to the sources they belong to, there is no include/ mirror.
-# This directory is the include root, so a header at core/codecs/lsb.h is
-# reached as #include "codecs/lsb.h" from anywhere in the project.
+set(HH_CORE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/hhcore")
 
-file(GLOB_RECURSE HH_CORE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
-file(GLOB_RECURSE HH_CORE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
-
-# The glob is recursive, so core/tests would end up inside the library.
-list(FILTER HH_CORE_SOURCES EXCLUDE REGEX "/tests/")
-list(FILTER HH_CORE_HEADERS EXCLUDE REGEX "/tests/")
+file(GLOB_RECURSE HH_CORE_SOURCES CONFIGURE_DEPENDS "${HH_CORE_ROOT}/*.c")
+file(GLOB_RECURSE HH_CORE_HEADERS CONFIGURE_DEPENDS "${HH_CORE_ROOT}/*.h")
 
 if(NOT HH_CORE_SOURCES)
-    message(FATAL_ERROR "No .c files under ${CMAKE_CURRENT_SOURCE_DIR}")
+    message(FATAL_ERROR "No .c files under ${HH_CORE_ROOT}")
 endif()
 
-# Dependencies. libsodium and libjpeg ship pkg-config files on the platforms we
-# build on; find_library is the fallback for the ones that do not, or for a
-# hand-rolled prefix passed in CMAKE_PREFIX_PATH.
 find_package(PkgConfig QUIET)
 
 # Resolves one external library and returns the target to link against.
@@ -64,25 +53,23 @@ set_target_properties(hh_core PROPERTIES
 
 target_include_directories(hh_core PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>")
 
+# libsodium and libjpeg are PUBLIC: their headers are part of what core hands
+# to its consumers, so the CLI gets the include paths without restating them.
 target_link_libraries(hh_core
     PUBLIC
         hushhush::options
         Threads::Threads
-    PRIVATE
         ${HH_SODIUM}
         ${HH_JPEG}
+    PRIVATE
         $<$<NOT:$<PLATFORM_ID:Windows>>:m>
 )
 
-# Vendored single-header libraries (stb and friends) come with warnings that
-# are not ours to fix, so they compile quietly.
-file(GLOB_RECURSE HH_VENDOR_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/libs/*.c")
+file(GLOB_RECURSE HH_VENDOR_SOURCES CONFIGURE_DEPENDS "${HH_CORE_ROOT}/libs/*.c")
 if(HH_VENDOR_SOURCES AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     set_source_files_properties(${HH_VENDOR_SOURCES} PROPERTIES COMPILE_OPTIONS "-w")
 endif()
 
-# Test cases live next to the code they cover. The harness they share comes
-# from the top level tests directory, added before this one.
 if(HH_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
