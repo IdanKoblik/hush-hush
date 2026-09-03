@@ -14,92 +14,48 @@
 
 </div>
 
----
+# Installation
 
-## Table of Contents
+## From a release
 
-- [About](#about)
-- [Requirements](#requirements)
-- [Building](#building)
-- [Usage](#usage)
-  - [Examples](#examples)
-- [Development](#development)
-  - [Tests](#tests)
-  - [Coverage](#coverage)
-  - [Formatting](#formatting)
-  - [Devtools](#devtools)
-  - [Editor Integration](#editor-integration)
-- [Contributing](#contributing)
-- [License](#license)
-
----
-
-## About
-
-Hush Hush hides one file inside another. For example give it a PNG and a payload, and it
-writes out a PNG that looks exactly like the one you handed it, carrying your
-bytes in the low bits of its pixels. Hand it a JPEG instead and the bytes go
-into the low bits of the quantised DCT coefficients, and the file is rewritten
-straight from those coefficients so nothing is requantised.
-
-Supply a passphrase and the payload is sealed with XSalsa20-Poly1305 before it
-goes in.
-
-Leave the passphrase empty and the payload goes in as-is, sequentially,
-terminated by a marker. That mode is for convenience, not for secrecy.
-
-## Requirements
-
-Linux, plus the following:
-
-| Dependency  | Used for                                        |
-| ----------- | ----------------------------------------------- |
-| libsodium   | Key derivation, secretbox, ChaCha20, memzero    |
-| libjpeg     | Reading and writing the DCT coefficients of JPEG carriers |
-| pkg-config  | Locating libsodium and libjpeg at build time    |
-| GNU ld      | The `commands` section the subcommand table lives in |
-
-Debian and Ubuntu:
+Each [release](https://github.com/IdanKoblik/hush-hush/releases) ships one
+tarball per Ubuntu build, holding the `hh` binary, the static library and its
+headers, alongside a single `checksums.txt` covering every tarball. Pick the
+build matching your distribution; the `ubuntu-22.04` one links against an older
+glibc and so runs in more places.
 
 ```sh
-sudo apt install build-essential pkg-config libsodium-dev libjpeg-dev
+VERSION=0.1.1
+NAME="hush-hush-${VERSION}-linux-$(uname -m)-ubuntu-24.04"
+BASE="https://github.com/IdanKoblik/hush-hush/releases/download/v${VERSION}"
+
+curl -LO "$BASE/$NAME.tar.gz"
+curl -LO "$BASE/checksums.txt"
+
+sha256sum --ignore-missing -c checksums.txt
+tar -xzf "$NAME.tar.gz"
 ```
 
-Fedora:
+## From source
 
 ```sh
-sudo dnf install gcc make pkgconf-pkg-config libsodium-devel libjpeg-turbo-devel
+git clone https://github.com/IdanKoblik/hush-hush.git
+cd hush-hush
+
+cmake -S . -B build
+cmake --build build -j
+sudo cmake --install build
 ```
 
-Arch:
+That installs `hh` into `CMAKE_INSTALL_PREFIX/bin`, `/usr/local/bin` by default.
+Pass `--prefix ~/.local` to install without `sudo`. Only the CLI has an install
+rule; to use the library, build it and point at `build/lib/libhushhush.a` and
+the headers in `core/` where they sit.
 
-```sh
-sudo pacman -S base-devel pkgconf libsodium libjpeg-turbo
-```
+Skipping the install step is fine too: the binary runs from `build/hh`. See
+[Building](#building) for the options, the test suite and coverage.
 
-Optional: `clang-format` for the formatting targets, `lcov` for coverage, and
-Python with Pillow for the image comparison devtool.
-
-## Building
-
-```sh
-make
-```
-
-That produces the `hh` binary in the project root and regenerates
-`compile_commands.json`. Sources and headers are discovered recursively, so new
-files under `src/` and `include/` are picked up without editing the Makefile.
-
-Subcommands register themselves at link time: `COMMAND(cmd)` places a pointer
-into the `commands.*` section, `linker.ld` gathers those between
-`__start_commands` and `__stop_commands`, and `find_command` binary searches the
-result. Adding a subcommand means adding a file, nothing else.
-
-```sh
-make clean
-```
-
-## Usage
+# Usage
 
 ```
 ./hh [--verbose] <subcommand> <target> [options]
@@ -112,7 +68,7 @@ LSB over DCT coefficients for JPEG. `-c` selects how a bit is written in either
 case, and a JPEG holds noticeably less than a PNG of the same size because only
 non-trivial AC coefficients are usable.
 
-### Examples
+## Examples
 
 Hide a document in a photo, encrypted:
 
@@ -175,61 +131,86 @@ everything when it is not, so pipe it to a file to read the whole stream:
 ./hh inspect innocent.png > bits.txt
 ```
 
-## Development
+# Editor Integration
 
-### Tests
+Configuring the build regenerates `compile_commands.json` and links it into the
+source root, so `clangd` picks up the include paths and the libsodium flags with
+no extra configuration. `.clangd`, `.editorconfig` and `.clang-format` are
+checked in.
 
-```sh
-make test
-```
+# Building
 
-Every production object except `main.o` is linked into the test runner, which is
-built on the vendored [greatest](https://github.com/silentbicycle/greatest)
-header.
-
-### Coverage
-
-Requires `lcov`:
+## Configure and build
 
 ```sh
-make coverage
+cmake -S . -B build
+cmake --build build -j
 ```
 
-The HTML report lands in `coverage/html/index.html`.
+`hh` lands in `build/`, static libraries in `build/lib/`. The build type
+defaults to `Release`; pass `-DCMAKE_BUILD_TYPE=Debug` for a debug build.
 
-### Formatting
+Sources and headers are globbed recursively per directory with
+`CONFIGURE_DEPENDS`, so adding a file is enough, and the glob is re-run when the
+file set changes. Headers sit next to the sources they belong to, there is no
+mirrored `include/`.
+
+`hushhush::core` links libsodium and libjpeg `PUBLIC`, so their headers come
+along with it and the CLI does not restate them. Note that `jpeglib.h` is not
+self contained: `stddef.h` and `stdio.h` have to be included ahead of it.
+
+## Options
+
+| Option                  | Default            | Effect                                |
+| ----------------------- | ------------------ | ------------------------------------- |
+| `HH_BUILD_CLI`          | `ON`               | Build the `hh` command line app       |
+| `HH_BUILD_TESTS`        | `ON` at top level  | Build the test binaries and register them with CTest |
+| `HH_WARNINGS_AS_ERRORS` | `OFF`              | `-Werror`, or `/WX` on MSVC           |
+| `HH_ENABLE_COVERAGE`    | `OFF`              | Instrument for gcov and lcov, GCC or Clang only |
 
 ```sh
-make format        # rewrite sources in place
-make format-check  # fail if anything is unformatted
+cmake -S . -B build -DHH_WARNINGS_AS_ERRORS=ON -DCMAKE_BUILD_TYPE=Debug
 ```
 
-The style is in `.clang-format`: 4 spaces, 125 columns, pointers bound to the
-name.
+Warnings and the shared compile definitions live on one interface target,
+`hushhush::options`, which everything else links, so a flag is set in one place.
 
-### Devtools
+## Tests
+
+Tests live next to the code they cover, in `{module}/tests/` 
+build into one binary each. The shared harness is in `testing/`: the vendored
+[greatest](https://github.com/silentbicycle/greatest) header and the fixture
+helpers, held by `hushhush::testing`. No test cases live there.
 
 ```sh
-./devtools/checksum.sh original.pdf recovered.pdf
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j
+ctest --test-dir build --output-on-failure
 ```
 
-Compares two files by SHA-256, which is how a round trip is confirmed to be
-lossless.
+or
 
 ```sh
-python3 devtools/compare_image.py carrier.png output.png
+cmake -S . -B build && cmake --build build -j && ctest --test-dir build --output-on-failure
 ```
 
-Reports how many pixels the encoder touched and by how much, which is the quick
-way to see the difference between `lsbr` and `lsbm`.
+That runs `build/hh_{module}_tests`, registered with CTest
 
-### Editor Integration
+## Coverage
 
-`make` regenerates `compile_commands.json`, so `clangd` picks up the include
-paths and the libsodium flags with no extra configuration. `.clangd`,
-`.editorconfig` and `.clang-format` are checked in.
+Requires `lcov`, and GCC or Clang:
 
-## Contributing
+```sh
+cmake -S . -B coverage -DCMAKE_BUILD_TYPE=Debug -DHH_ENABLE_COVERAGE=ON
+cmake --build coverage -j
+ctest --test-dir coverage
+
+./devtools/coverage.sh
+```
+
+The report lands in `coverage/html/index.html`.
+
+# Contributing
 
 Pull requests are welcome. Every pull request needs a `CHANGELOG.md` entry, or
 the `ci/skip-changelog` label if the change does not deserve one, and CI builds
