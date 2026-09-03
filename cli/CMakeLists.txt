@@ -1,8 +1,9 @@
 file(GLOB_RECURSE HH_CLI_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
 file(GLOB_RECURSE HH_CLI_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
 
-list(FILTER HH_CLI_SOURCES EXCLUDE REGEX "/tests/")
-list(FILTER HH_CLI_HEADERS EXCLUDE REGEX "/tests/")
+# "/build/" keeps a stray in-tree CMake build directory from being globbed in.
+list(FILTER HH_CLI_SOURCES EXCLUDE REGEX "/(tests|build)/")
+list(FILTER HH_CLI_HEADERS EXCLUDE REGEX "/(tests|build)/")
 
 # main() is kept out of the library so the test runner can bring its own.
 set(HH_CLI_MAIN "")

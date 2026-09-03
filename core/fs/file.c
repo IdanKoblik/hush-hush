@@ -37,7 +37,7 @@ int read_file_raw_data(const char *target, unsigned char **data, size_t *data_le
 
     rewind(file);
 
-    *data = malloc((size_t)size);
+    *data = malloc(size > 0 ? (size_t)size : 1);
     if (!*data) {
         fclose(file);
         return -1;

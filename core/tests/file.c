@@ -58,6 +58,28 @@ TEST get_file_data_reads_empty_file(void) {
     PASS();
 }
 
+/*
+ * An empty file is a successful read of zero bytes, never a failure -- the
+ * buffer must come back non-NULL even though the size is 0.
+ */
+TEST get_file_data_returns_a_buffer_for_an_empty_file(void) {
+    char path[] = "/tmp/test_zero_file_XXXXXX";
+    int fd = mkstemp(path);
+    ASSERT(fd >= 0);
+    close(fd);
+
+    unsigned char *data = NULL;
+    size_t data_len = 1;
+
+    ASSERT_EQ(0, read_file_raw_data(path, &data, &data_len));
+    ASSERT(data != NULL);
+    ASSERT_EQ(0, data_len);
+
+    free(data);
+    unlink(path);
+    PASS();
+}
+
 TEST get_file_type_returns_not_found_for_nonexistent(void) {
     enum FileType type = get_file_type("/tmp/nonexistent_file_hush_hush");
     ASSERT(type == TYPE_UNKNOWN || type == TYPE_NOT_FOUND);
@@ -68,5 +90,6 @@ SUITE(file_suite) {
     RUN_TEST(get_file_data_reads_file_contents);
     RUN_TEST(get_file_data_returns_neg_for_nonexistent);
     RUN_TEST(get_file_data_reads_empty_file);
+    RUN_TEST(get_file_data_returns_a_buffer_for_an_empty_file);
     RUN_TEST(get_file_type_returns_not_found_for_nonexistent);
 }

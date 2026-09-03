@@ -1,17 +1,5 @@
 # Building
 
-## Requirements
-
-Unix, plus the following:
-
-| Dependency | Used for                                                  |
-| ---------- | --------------------------------------------------------- |
-| CMake 3.21 | Object libraries have to propagate through `INTERFACE` targets |
-| libsodium  | Key derivation, secretbox, ChaCha20, memzero              |
-| libjpeg    | Reading and writing the DCT coefficients of JPEG carriers |
-| pkg-config | Locating libsodium and libjpeg at configure time          |
-| GNU ld     | The `commands` section the subcommand table lives in      |
-
 ## Configure and build
 
 ```sh
@@ -58,6 +46,12 @@ helpers, held by `hushhush::testing`. No test cases live there.
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j
 ctest --test-dir build --output-on-failure
+```
+
+or
+
+```sh
+cmake -S . -B build && cmake --build build -j && ctest --test-dir build --output-on-failure
 ```
 
 That runs `build/hh_{module}_tests`, registered with CTest
