@@ -64,6 +64,15 @@ jobs:
           cp README.md CHANGELOG.md LICENSE "$root/"
 
           tar -czf "dist/$name.tar.gz" -C dist "$name"
+
+          # The same two files again, loose beside the tarball: the release page
+          # is then a one-click download for someone who only wants the CLI, or
+          # only the library to link against, without unpacking anything. The
+          # platform suffix keeps them from colliding across the matrix.
+          suffix="${name#hush-hush-}"
+          cp "$root/bin/hh" "dist/hh-$suffix"
+          cp "$root/lib/libhushhush.a" "dist/libhushhush-$suffix.a"
+
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
           echo "### $name" >> "$GITHUB_STEP_SUMMARY"
@@ -73,5 +82,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.package.outputs.name }}
-          path: dist/*.tar.gz
+          path: |
+            dist/*.tar.gz
+            dist/hh-*
+            dist/libhushhush-*.a
           if-no-files-found: error

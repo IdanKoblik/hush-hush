@@ -133,14 +133,19 @@ jobs:
           path: dist
           merge-multiple: true
 
-      # One checksums.txt over every tarball, rather than a loose .sha256 beside
+      # One checksums.txt over every asset, rather than a loose .sha256 beside
       # each one, so `sha256sum -c checksums.txt` verifies the whole release.
+      # Everything downloaded is an asset, so the only file to leave out is the
+      # checksum list itself.
       - name: Write checksums
         run: |
           set -euo pipefail
 
           cd dist
-          sha256sum *.tar.gz | tee checksums.txt
+          find . -maxdepth 1 -type f ! -name checksums.txt -printf '%P\0' \
+            | sort -z \
+            | xargs -0 sha256sum \
+            | tee checksums.txt
 
       # The section for this version, when there is one. With the changelog
       # check skipped the release falls back to generated notes.
@@ -197,5 +202,11 @@ jobs:
           if [ "$DRAFT" = "true" ]; then args+=(--draft); fi
           if [ "$PRERELEASE" = "true" ]; then args+=(--prerelease); fi
 
-          gh release create "$TAG" "${args[@]}" dist/*.tar.gz dist/checksums.txt
+          # The tarball is the complete drop; the loose hh binary and
+          # libhushhush.a beside it are for grabbing just one of the two.
+          gh release create "$TAG" "${args[@]}" \
+            dist/*.tar.gz \
+            dist/hh-* \
+            dist/libhushhush-*.a \
+            dist/checksums.txt
           echo "Published $TAG" >> "$GITHUB_STEP_SUMMARY"
