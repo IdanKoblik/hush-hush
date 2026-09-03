@@ -1,10 +1,11 @@
-set(HH_CORE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/hhcore")
+file(GLOB_RECURSE HH_CORE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
+file(GLOB_RECURSE HH_CORE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
 
-file(GLOB_RECURSE HH_CORE_SOURCES CONFIGURE_DEPENDS "${HH_CORE_ROOT}/*.c")
-file(GLOB_RECURSE HH_CORE_HEADERS CONFIGURE_DEPENDS "${HH_CORE_ROOT}/*.h")
+list(FILTER HH_CORE_SOURCES EXCLUDE REGEX "/tests/")
+list(FILTER HH_CORE_HEADERS EXCLUDE REGEX "/tests/")
 
 if(NOT HH_CORE_SOURCES)
-    message(FATAL_ERROR "No .c files under ${HH_CORE_ROOT}")
+    message(FATAL_ERROR "No .c files under ${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 
 find_package(PkgConfig QUIET)
@@ -38,12 +39,20 @@ function(hh_find_dependency out_var pc_name header lib_name)
 endfunction()
 
 hh_find_dependency(HH_SODIUM libsodium sodium.h sodium)
-hh_find_dependency(HH_JPEG   libjpeg  jpeglib.h jpeg)
+# hh_find_dependency(HH_JPEG   libjpeg  jpeglib.h jpeg)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-add_library(hh_core STATIC ${HH_CORE_SOURCES} ${HH_CORE_HEADERS})
+file(GLOB_RECURSE HH_VENDOR_SOURCES CONFIGURE_DEPENDS
+    "${PROJECT_SOURCE_DIR}/third_party/*.c"
+)
+
+add_library(hh_core STATIC
+    ${HH_CORE_SOURCES}
+    ${HH_CORE_HEADERS}
+    ${HH_VENDOR_SOURCES}
+)
 add_library(hushhush::core ALIAS hh_core)
 
 set_target_properties(hh_core PROPERTIES
@@ -51,7 +60,14 @@ set_target_properties(hh_core PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
-target_include_directories(hh_core PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>")
+# The parent of this directory is on the include path, so headers are reached
+# as <core/...> both from inside the library and from its consumers.
+target_include_directories(hh_core
+    PUBLIC
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>"
+    SYSTEM PUBLIC
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/third_party>"
+)
 
 # libsodium and libjpeg are PUBLIC: their headers are part of what core hands
 # to its consumers, so the CLI gets the include paths without restating them.
@@ -60,12 +76,10 @@ target_link_libraries(hh_core
         hushhush::options
         Threads::Threads
         ${HH_SODIUM}
-        ${HH_JPEG}
     PRIVATE
         $<$<NOT:$<PLATFORM_ID:Windows>>:m>
 )
 
-file(GLOB_RECURSE HH_VENDOR_SOURCES CONFIGURE_DEPENDS "${HH_CORE_ROOT}/libs/*.c")
 if(HH_VENDOR_SOURCES AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     set_source_files_properties(${HH_VENDOR_SOURCES} PROPERTIES COMPILE_OPTIONS "-w")
 endif()
