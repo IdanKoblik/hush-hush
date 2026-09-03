@@ -12,7 +12,7 @@ struct ImageCtx {
     const char *output_file;
 
     enum CodecType codec_type;
-    enum FileType file_type;
+    enum FileType image_type;
 
     const char *passphrase;
 };

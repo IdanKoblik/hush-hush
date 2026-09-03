@@ -54,7 +54,7 @@ int read_file_raw_data(const char *target, unsigned char **data, size_t *data_le
     return 0;
 }
 
-int write_to_file_raw_data(const char *target, const unsigned *data, size_t data_len) {
+int write_to_file_raw_data(const char *target, const unsigned char *data, size_t data_len) {
     FILE *file = fopen(target, "wb");
     if (!file)
         return -1;

@@ -1,4 +1,6 @@
 #include "image.h"
+#include <core/codecs/dct.h>
+#include <core/codecs/lsb.h>
 #include <core/log.h>
 #include <stb_image.h>
 
@@ -42,4 +44,35 @@ enum FileType detect_image_type(const char *target) {
     }
 
     return TYPE_UNKNOWN;
+}
+
+static const Codec *codec_for(enum FileType type) {
+    switch (type) {
+    case TYPE_PNG_IMAGE:
+        return &LsbCodec;
+    case TYPE_JPEG_IMAGE:
+        return &DctCodec;
+    default:
+        return NULL;
+    }
+}
+
+int encode_image(struct ImageCtx *ctx, unsigned char *data, size_t data_len) {
+    const Codec *codec = codec_for(ctx->image_type);
+    if (!codec) {
+        ERROR("Unsupported file type");
+        return -1;
+    }
+
+    return codec->encode(ctx, data, data_len);
+}
+
+int decode_image(struct ImageCtx *ctx, unsigned char **data, size_t *data_len) {
+    const Codec *codec = codec_for(ctx->image_type);
+    if (!codec) {
+        ERROR("Unsupported file type");
+        return -1;
+    }
+
+    return codec->decode(ctx, data, data_len);
 }

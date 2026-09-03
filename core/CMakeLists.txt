@@ -39,7 +39,7 @@ function(hh_find_dependency out_var pc_name header lib_name)
 endfunction()
 
 hh_find_dependency(HH_SODIUM libsodium sodium.h sodium)
-# hh_find_dependency(HH_JPEG   libjpeg  jpeglib.h jpeg)
+hh_find_dependency(HH_JPEG   libjpeg  jpeglib.h jpeg)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -76,6 +76,7 @@ target_link_libraries(hh_core
         hushhush::options
         Threads::Threads
         ${HH_SODIUM}
+        ${HH_JPEG}
     PRIVATE
         $<$<NOT:$<PLATFORM_ID:Windows>>:m>
 )
