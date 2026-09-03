@@ -2,8 +2,8 @@
 #include "helpers.h"
 
 #include "core/codecs/codec.h"
-#include "core/handlers/image.h"
 #include "core/fs/file.h"
+#include "core/handlers/image.h"
 
 #include <stdio.h>
 #include <stdlib.h>

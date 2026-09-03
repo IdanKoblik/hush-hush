@@ -1,7 +1,7 @@
 #include "container.h"
-#include <core/log.h>
-#include <core/crypto/prng.h>
 #include <core/crypto/payload.h>
+#include <core/crypto/prng.h>
+#include <core/log.h>
 
 #include <sodium.h>
 #include <stdint.h>

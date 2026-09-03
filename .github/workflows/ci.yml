@@ -1,0 +1,201 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (semver, with or without leading "v"). Leave empty to only run the checks.'
+        required: false
+        type: string
+        default: ''
+      skip_changelog:
+        description: 'Skip the CHANGELOG.md check'
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: 'Mark the release as a pre-release'
+        required: false
+        type: boolean
+        default: false
+      draft:
+        description: 'Create the release as a draft'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Both suites start immediately and in parallel: they are the gate everything
+  # downstream waits on.
+  core-tests:
+    name: Core
+    uses: ./.github/workflows/callable-tests.yml
+    with:
+      suite: core
+      # Building without the CLI also proves the library has no dependency on it.
+      build-cli: false
+
+  cli-tests:
+    name: CLI
+    uses: ./.github/workflows/callable-tests.yml
+    with:
+      suite: cli
+
+  # Formatting is a style gate, not a build gate, so it runs once the suites have
+  # shown the tree is actually sound.
+  format:
+    name: Format
+    needs: [core-tests, cli-tests]
+    uses: ./.github/workflows/callable-format.yml
+
+  changelog:
+    name: Changelog
+    uses: ./.github/workflows/callable-changelog.yml
+    with:
+      skip: ${{ inputs.skip_changelog == true }}
+      version: ${{ inputs.version || '' }}
+
+  coverage:
+    name: Coverage
+    needs: [core-tests, cli-tests]
+    uses: ./.github/workflows/callable-coverage.yml
+
+  prepare:
+    name: Prepare release
+    if: github.event_name == 'workflow_dispatch' && inputs.version != ''
+    # Nothing is tagged until the changelog, the formatting and the coverage run
+    # have all passed; the test suites are covered through the last two.
+    needs: [changelog, format, coverage]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          version="${INPUT_VERSION#v}"
+
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+            echo "::error::'$INPUT_VERSION' is not a valid semantic version (e.g. 1.2.3 or v1.2.3-rc.1)"
+            exit 1
+          fi
+
+          tag="v$version"
+
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::Tag $tag already exists"
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Releasing $tag" >> "$GITHUB_STEP_SUMMARY"
+
+  release-build:
+    name: Release build
+    needs: [prepare]
+    uses: ./.github/workflows/callable-release-build.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+
+  publish:
+    name: Publish release
+    needs: [prepare, release-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      # One checksums.txt over every tarball, rather than a loose .sha256 beside
+      # each one, so `sha256sum -c checksums.txt` verifies the whole release.
+      - name: Write checksums
+        run: |
+          set -euo pipefail
+
+          cd dist
+          sha256sum *.tar.gz | tee checksums.txt
+
+      # The section for this version, when there is one. With the changelog
+      # check skipped the release falls back to generated notes.
+      - name: Extract release notes
+        id: notes
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          awk -v ver="$VERSION" '
+            /^## \[/ {
+              if (found) exit
+              heading = $0
+              sub(/^## \[/, "", heading)
+              sub(/\].*$/, "", heading)
+              if (heading == ver) found = 1
+              next
+            }
+            found && /^\[[^]]+\]:/ { exit }
+            found { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' | tac | sed -e '/./,$!d' | tac > release-notes.md
+
+          if [ -s release-notes.md ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No CHANGELOG.md section for $VERSION, falling back to generated notes."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create tag
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          DRAFT: ${{ inputs.draft }}
+          PRERELEASE: ${{ inputs.prerelease }}
+          HAS_NOTES: ${{ steps.notes.outputs.found }}
+        run: |
+          args=(--title "$TAG" --target "$GITHUB_SHA")
+
+          if [ "$HAS_NOTES" = "true" ]; then
+            args+=(--notes-file release-notes.md)
+          else
+            args+=(--generate-notes)
+          fi
+
+          if [ "$DRAFT" = "true" ]; then args+=(--draft); fi
+          if [ "$PRERELEASE" = "true" ]; then args+=(--prerelease); fi
+
+          gh release create "$TAG" "${args[@]}" dist/*.tar.gz dist/checksums.txt
+          echo "Published $TAG" >> "$GITHUB_STEP_SUMMARY"

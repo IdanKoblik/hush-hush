@@ -2,10 +2,10 @@
 #include "../prompt.h"
 #include "command.h"
 #include <core/codecs/codec.h>
-#include <flag.h>
+#include <core/fs/file.h>
 #include <core/handlers/image.h>
 #include <core/log.h>
-#include <core/fs/file.h>
+#include <flag.h>
 #include <sodium.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,8 +74,7 @@ static int exec(int argc, char *argv[]) {
                                .image_type = type,
                                .codec_type = codec,
 
-                               .passphrase = passphrase[0] ? passphrase : NULL
-        };
+                               .passphrase = passphrase[0] ? passphrase : NULL};
 
         encode_status = encode_image(&ctx, data, data_len);
     }

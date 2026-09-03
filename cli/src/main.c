@@ -1,10 +1,10 @@
-#include "src/usage.h"
 #include "cmd/command.h"
-#include <stddef.h>
-#include <stdio.h>
+#include "src/usage.h"
+#include <core/log.h>
 #include <jpeglib.h>
 #include <sodium.h>
-#include <core/log.h>
+#include <stddef.h>
+#include <stdio.h>
 
 #include "flag.h"
 

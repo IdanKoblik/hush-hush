@@ -1,10 +1,10 @@
 #include "../args.h"
 #include "../prompt.h"
 #include "command.h"
-#include <flag.h>
+#include <core/fs/file.h>
 #include <core/handlers/image.h>
 #include <core/log.h>
-#include <core/fs/file.h>
+#include <flag.h>
 
 #include <sodium.h>
 #include <stdlib.h>

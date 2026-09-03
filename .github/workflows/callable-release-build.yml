@@ -1,0 +1,77 @@
+name: Release build
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Release version, without the leading v'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  APT_PACKAGES: >-
+    build-essential
+    cmake
+    pkg-config
+    libsodium-dev
+    libjpeg-dev
+
+jobs:
+  build:
+    name: Release build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends $APT_PACKAGES
+
+      - name: Build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DHH_BUILD_TESTS=OFF
+          cmake --build build -j"$(nproc)"
+
+      - name: Package
+        id: package
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          name="hush-hush-${VERSION}-linux-$(uname -m)-${{ matrix.os }}"
+          root="dist/$name"
+
+          mkdir -p "$root/bin" "$root/lib" "$root/include"
+
+          cp build/hh "$root/bin/"
+          cp build/lib/libhushhush.a "$root/lib/"
+
+          # The headers keep their core/ prefix, so a consumer only needs
+          # -Iinclude to compile its existing <core/...> includes against the
+          # shipped library.
+          find core -name '*.h' -not -path 'core/tests/*' \
+            -exec cp --parents {} "$root/include/" \;
+
+          cp README.md CHANGELOG.md LICENSE "$root/"
+
+          tar -czf "dist/$name.tar.gz" -C dist "$name"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+          echo "### $name" >> "$GITHUB_STEP_SUMMARY"
+          tar -tzf "dist/$name.tar.gz" | sed 's/^/    /' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: dist/*.tar.gz
+          if-no-files-found: error

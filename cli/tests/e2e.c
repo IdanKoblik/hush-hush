@@ -39,7 +39,7 @@ static int run_hh(const char *const *args, const char *input, struct Run *run) {
         return -1;
     }
 
-    //argv[0] plus the caller's arguments plus the NULL terminator.
+    // argv[0] plus the caller's arguments plus the NULL terminator.
     size_t count = 0;
     while (args[count])
         count++;

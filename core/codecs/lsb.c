@@ -1,9 +1,9 @@
 #include "lsb.h"
-#include "core/log.h"
-#include "core/handlers/image.h"
 #include "core/codecs/carrier.h"
-#include "core/codecs/container.h"
 #include "core/codecs/codec.h"
+#include "core/codecs/container.h"
+#include "core/handlers/image.h"
+#include "core/log.h"
 
 #include <sodium/randombytes.h>
 #include <stb_image.h>

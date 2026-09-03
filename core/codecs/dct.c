@@ -2,8 +2,8 @@
 
 #include "carrier.h"
 #include "container.h"
-#include "core/log.h"
 #include "core/handlers/image.h"
+#include "core/log.h"
 
 #include <setjmp.h>
 #include <sodium.h>

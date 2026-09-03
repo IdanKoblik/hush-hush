@@ -1,6 +1,6 @@
 #include "command.h"
-#include <flag.h>
 #include <core/log.h>
+#include <flag.h>
 #include <stb_image.h>
 #include <stdlib.h>
 #include <unistd.h>

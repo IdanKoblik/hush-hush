@@ -1,9 +1,9 @@
 #include "greatest.h"
 
+#include "helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "helpers.h"
 
 #include "core/codecs/codec.h"
 #include "core/handlers/image.h"

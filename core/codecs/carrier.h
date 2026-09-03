@@ -9,5 +9,3 @@ typedef struct Carrier {
     unsigned char (*read)(const struct Carrier *carrier, size_t slot);
     void (*write)(const struct Carrier *carrier, size_t slot, unsigned char bit);
 } Carrier;
-
-
