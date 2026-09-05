@@ -14,6 +14,8 @@
   { "name": "module/web",  "color": "B6023E", "description": "Web interface" },
 
   { "name": "ci/skip-changelog",        "color": "B1361A", "description": "Skip changelog check in a pull request" },
+  { "name": "ci/devops",        "color": "9f1AB1", "description": "Devops operations" },
+  
   { "name": "BREAKING CHANGE",        "color": "B60205", "description": "Breaking change" },
 
   { "name": "community/help-wanted",      "color": "2563EB", "description": "Help wanted from community" },
