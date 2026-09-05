@@ -1,4 +1,5 @@
 # Local
+imgui.ini
 build/*
 coverage/*
 hh

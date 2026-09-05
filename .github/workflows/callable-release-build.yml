@@ -21,12 +21,21 @@ env:
 
 jobs:
   build:
-    name: Release build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Release build (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
+      # One build per architecture rather than per Ubuntu release. The assets no
+      # longer carry the runner's OS in their names, so two Ubuntu versions of
+      # the same architecture would collide once the publish job merges the
+      # artifacts. 22.04 is the floor for both: it links against the oldest
+      # glibc the runners offer, so the binaries run in the most places.
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04]
+        include:
+          - arch: x86_64
+            runner: ubuntu-22.04
+          - arch: aarch64
+            runner: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v4
 
@@ -44,10 +53,20 @@ jobs:
         id: package
         env:
           VERSION: ${{ inputs.version }}
+          ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
 
-          name="hush-hush-${VERSION}-linux-$(uname -m)-${{ matrix.os }}"
+          # The architecture comes from the matrix, not from uname, so that the
+          # name is decided in one place. Checking the two agree turns a
+          # mislabelled runner into a failure here instead of an aarch64 build
+          # published under an x86_64 name.
+          if [ "$(uname -m)" != "$ARCH" ]; then
+            echo "::error::Runner reports $(uname -m), the matrix expected $ARCH"
+            exit 1
+          fi
+
+          name="hush-hush-${VERSION}-linux-${ARCH}"
           root="dist/$name"
 
           mkdir -p "$root/bin" "$root/lib" "$root/include"
@@ -68,7 +87,7 @@ jobs:
           # The same two files again, loose beside the tarball: the release page
           # is then a one-click download for someone who only wants the CLI, or
           # only the library to link against, without unpacking anything. The
-          # platform suffix keeps them from colliding across the matrix.
+          # architecture suffix keeps them from colliding across the matrix.
           suffix="${name#hush-hush-}"
           cp "$root/bin/hh" "dist/hh-$suffix"
           cp "$root/lib/libhushhush.a" "dist/libhushhush-$suffix.a"
@@ -83,6 +102,7 @@ jobs:
         with:
           name: ${{ steps.package.outputs.name }}
           path: |
+            dist/*.tar.gz
             dist/hh-*
             dist/libhushhush-*.a
           if-no-files-found: error

@@ -19,14 +19,14 @@
 ## From a release
 
 Each [release](https://github.com/IdanKoblik/hush-hush/releases) ships one
-tarball per Ubuntu build, holding the `hh` binary, the static library and its
-headers, alongside a single `checksums.txt` covering every tarball. Pick the
-build matching your distribution; the `ubuntu-22.04` one links against an older
-glibc and so runs in more places.
+tarball per architecture, `x86_64` and `aarch64`, holding the `hh` binary, the
+static library and its headers, alongside a single `checksums.txt` covering
+every tarball. Both are built on Ubuntu 22.04, against the oldest glibc the
+runners offer, so they run on most distributions.
 
 ```sh
 VERSION=0.1.1
-NAME="hush-hush-${VERSION}-linux-$(uname -m)-ubuntu-24.04"
+NAME="hush-hush-${VERSION}-linux-$(uname -m)"
 BASE="https://github.com/IdanKoblik/hush-hush/releases/download/v${VERSION}"
 
 curl -LO "$BASE/$NAME.tar.gz"
