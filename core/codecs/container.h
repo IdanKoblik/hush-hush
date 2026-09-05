@@ -6,6 +6,10 @@
 #include <sodium.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Container magic, kept in cleartext so a reader can tell the two modes apart. */
 #define HUSH_MAGIC "HUSH"
 #define HUSH_MAGIC_LEN (sizeof(HUSH_MAGIC) - 1)
@@ -58,3 +62,7 @@
 
 int container_embed(const Carrier *carrier, enum CodecType codec, const char *passphrase, const unsigned char *data, size_t data_len);
 int container_extract(const Carrier *carrier, const char *passphrase, enum CodecType *codec, unsigned char **data, size_t *data_len);
+
+#ifdef __cplusplus
+}
+#endif

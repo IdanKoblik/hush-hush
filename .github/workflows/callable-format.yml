@@ -35,7 +35,7 @@ jobs:
 
           # third_party and testing/greatest.h are vendored: they keep upstream's
           # style, not ours.
-          mapfile -t files < <(git ls-files '*.c' '*.h' ':!:third_party/**' ':!:testing/greatest.h')
+          mapfile -t files < <(git ls-files '*.c' '*.h' '*.cpp' '*.hpp' ':!:third_party/**' ':!:testing/greatest.h')
 
           if [ "${#files[@]}" -eq 0 ]; then
             echo "::error::No sources matched the formatting check"

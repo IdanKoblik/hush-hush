@@ -5,6 +5,10 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int verbose;
 
 #define INFO(fmt, ...) printf("[+] " fmt "\n", ##__VA_ARGS__)
@@ -28,3 +32,7 @@ extern int verbose;
             printf("[%s %s:%d] [DEBUG] " fmt "\n", _buf, __FILE__, __LINE__, ##__VA_ARGS__); \
         }                                                                                    \
     } while (0)
+
+#ifdef __cplusplus
+}
+#endif
