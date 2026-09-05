@@ -11,6 +11,7 @@
   { "name": "module/core", "color": "0366D6", "description": "Core functionality and shared components" },
   { "name": "module/gui",  "color": "FBCA04", "description": "Graphical user interface and visual components" },
   { "name": "module/cli",  "color": "B60205", "description": "Command-line interface and terminal functionality" },
+  { "name": "module/web",  "color": "B6023E", "description": "Web interface" },
 
   { "name": "ci/skip-changelog",        "color": "B1361A", "description": "Skip changelog check in a pull request" },
   { "name": "BREAKING CHANGE",        "color": "B60205", "description": "Breaking change" },
