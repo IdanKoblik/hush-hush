@@ -31,8 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release builds are cut per architecture instead of per Ubuntu release: one
   `x86_64` and one `aarch64` set of assets, both built on 22.04 so they link
   against the oldest glibc available. The Ubuntu version is gone from every
-  asset name, leaving `hush-hush-<version>-linux-<arch>.tar.gz` and the loose
-  `hh-<version>-linux-<arch>` beside it.
+  asset name, leaving the loose `hh-<version>-linux-<arch>`,
+  `hh-gui-<version>-linux-<arch>` and `libhushhush-<version>-linux-<arch>.a`.
+  The `hush-hush-<version>-linux-<arch>.tar.gz` drop is gone: every asset is now
+  a single file to download, and the headers are no longer published.
 - `inspect` command has been deleted. `hh analyse` replaces the end to end test
   that covered it.
 - `file_type_name` moved into `fs/file.h`, where the CLI and the GUI both reach

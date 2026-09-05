@@ -18,6 +18,15 @@ env:
     pkg-config
     libsodium-dev
     libjpeg-dev
+  # GLFW and the GL stack the GUI links against, plus the X11 development
+  # packages GLFW itself pulls in at link time.
+  APT_GUI_PACKAGES: >-
+    libglfw3-dev
+    libgl1-mesa-dev
+    libxrandr-dev
+    libxinerama-dev
+    libxcursor-dev
+    libxi-dev
 
 jobs:
   build:
@@ -42,11 +51,14 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends $APT_PACKAGES
+          sudo apt-get install -y --no-install-recommends $APT_PACKAGES $APT_GUI_PACKAGES
 
       - name: Build
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DHH_BUILD_TESTS=OFF
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DHH_BUILD_TESTS=OFF \
+            -DHH_BUILD_GUI=ON
           cmake --build build -j"$(nproc)"
 
       - name: Package
@@ -66,43 +78,29 @@ jobs:
             exit 1
           fi
 
-          name="hush-hush-${VERSION}-linux-${ARCH}"
-          root="dist/$name"
+          # Every asset is a loose file: the release page is a one-click
+          # download for whichever of the CLI, the GUI or the library to link
+          # against someone wants, with nothing to unpack. The architecture
+          # suffix keeps them from colliding across the matrix.
+          suffix="${VERSION}-linux-${ARCH}"
+          name="hush-hush-$suffix"
 
-          mkdir -p "$root/bin" "$root/lib" "$root/include"
+          mkdir -p dist
 
-          cp build/hh "$root/bin/"
-          cp build/lib/libhushhush.a "$root/lib/"
-
-          # The headers keep their core/ prefix, so a consumer only needs
-          # -Iinclude to compile its existing <core/...> includes against the
-          # shipped library.
-          find core -name '*.h' -not -path 'core/tests/*' \
-            -exec cp --parents {} "$root/include/" \;
-
-          cp README.md CHANGELOG.md LICENSE "$root/"
-
-          tar -czf "dist/$name.tar.gz" -C dist "$name"
-
-          # The same two files again, loose beside the tarball: the release page
-          # is then a one-click download for someone who only wants the CLI, or
-          # only the library to link against, without unpacking anything. The
-          # architecture suffix keeps them from colliding across the matrix.
-          suffix="${name#hush-hush-}"
-          cp "$root/bin/hh" "dist/hh-$suffix"
-          cp "$root/lib/libhushhush.a" "dist/libhushhush-$suffix.a"
+          cp build/hh "dist/hh-$suffix"
+          cp build/hh-gui "dist/hh-gui-$suffix"
+          cp build/lib/libhushhush.a "dist/libhushhush-$suffix.a"
 
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
           echo "### $name" >> "$GITHUB_STEP_SUMMARY"
-          tar -tzf "dist/$name.tar.gz" | sed 's/^/    /' >> "$GITHUB_STEP_SUMMARY"
+          ls -1 dist | sed 's/^/    /' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.package.outputs.name }}
           path: |
-            dist/*.tar.gz
             dist/hh-*
             dist/libhushhush-*.a
           if-no-files-found: error

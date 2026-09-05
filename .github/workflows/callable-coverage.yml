@@ -13,6 +13,12 @@ env:
     pkg-config
     libsodium-dev
     libjpeg-dev
+    libglfw3-dev
+    libgl1-mesa-dev
+    libxrandr-dev
+    libxinerama-dev
+    libxcursor-dev
+    libxi-dev
 
 jobs:
   coverage:
@@ -32,7 +38,8 @@ jobs:
         run: |
           cmake -S . -B coverage \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DHH_ENABLE_COVERAGE=ON
+            -DHH_ENABLE_COVERAGE=ON \
+            -DHH_BUILD_GUI=ON
 
       - name: Build
         run: cmake --build coverage -j"$(nproc)"

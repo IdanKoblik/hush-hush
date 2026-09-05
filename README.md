@@ -18,23 +18,28 @@
 
 ## From a release
 
-Each [release](https://github.com/IdanKoblik/hush-hush/releases) ships one
-tarball per architecture, `x86_64` and `aarch64`, holding the `hh` binary, the
-static library and its headers, alongside a single `checksums.txt` covering
-every tarball. Both are built on Ubuntu 22.04, against the oldest glibc the
+Each [release](https://github.com/IdanKoblik/hush-hush/releases) ships loose
+assets per architecture, `x86_64` and `aarch64`: the `hh` CLI, the `hh-gui`
+desktop app and the `libhushhush.a` static library, alongside a single
+`checksums.txt` covering all of them. Nothing to unpack — download the one you
+want. Both architectures are built on Ubuntu 22.04, against the oldest glibc the
 runners offer, so they run on most distributions.
 
 ```sh
 VERSION=0.1.1
-NAME="hush-hush-${VERSION}-linux-$(uname -m)"
+SUFFIX="${VERSION}-linux-$(uname -m)"
 BASE="https://github.com/IdanKoblik/hush-hush/releases/download/v${VERSION}"
 
-curl -LO "$BASE/$NAME.tar.gz"
+curl -LO "$BASE/hh-$SUFFIX"
 curl -LO "$BASE/checksums.txt"
 
 sha256sum --ignore-missing -c checksums.txt
-tar -xzf "$NAME.tar.gz"
+chmod +x "hh-$SUFFIX"
 ```
+
+`hh-gui-$SUFFIX` and `libhushhush-$SUFFIX.a` are fetched the same way. The
+headers are not published as assets: to build against the library, take them
+from `core/` in the source tree at the matching tag.
 
 ## From source
 

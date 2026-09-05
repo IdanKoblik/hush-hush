@@ -36,8 +36,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Both suites start immediately and in parallel: they are the gate everything
-  # downstream waits on.
+  # All three suites start immediately and in parallel: they are the gate
+  # everything downstream waits on.
   core-tests:
     name: Core
     uses: ./.github/workflows/callable-tests.yml
@@ -52,11 +52,20 @@ jobs:
     with:
       suite: cli
 
+  gui-tests:
+    name: GUI
+    uses: ./.github/workflows/callable-tests.yml
+    with:
+      suite: gui
+      # The GUI links the library directly, so the CLI plays no part here.
+      build-cli: false
+      build-gui: true
+
   # Formatting is a style gate, not a build gate, so it runs once the suites have
   # shown the tree is actually sound.
   format:
     name: Format
-    needs: [core-tests, cli-tests]
+    needs: [core-tests, cli-tests, gui-tests]
     uses: ./.github/workflows/callable-format.yml
 
   changelog:
@@ -68,7 +77,7 @@ jobs:
 
   coverage:
     name: Coverage
-    needs: [core-tests, cli-tests]
+    needs: [core-tests, cli-tests, gui-tests]
     uses: ./.github/workflows/callable-coverage.yml
 
   prepare:
@@ -202,10 +211,9 @@ jobs:
           if [ "$DRAFT" = "true" ]; then args+=(--draft); fi
           if [ "$PRERELEASE" = "true" ]; then args+=(--prerelease); fi
 
-          # The tarball is the complete drop; the loose hh binary and
-          # libhushhush.a beside it are for grabbing just one of the two.
+          # Loose assets only: hh and hh-gui per architecture (both matched by
+          # dist/hh-*), libhushhush.a to link against, and the checksum list.
           gh release create "$TAG" "${args[@]}" \
-            dist/*.tar.gz \
             dist/hh-* \
             dist/libhushhush-*.a \
             dist/checksums.txt
