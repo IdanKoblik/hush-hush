@@ -715,8 +715,7 @@ void App::draw_modals(void) {
         ImGui::TextUnformatted("Hush Hush");
         ImGui::TextDisabled("A steganography toolkit.");
         ImGui::Separator();
-        ImGui::TextWrapped("The hex pane shows the file as it sits on disk. The LSB pane shows the bytes core\n"
-                           "recovers from the low bit of every colour sample, which is where an LSB payload lives.");
+        ImGui::TextWrapped("https://github.com/IdanKoblik/hush-hush");
         ImGui::Separator();
 
         if (ImGui::Button("Close", ImVec2(120.0f, 0.0f)))
