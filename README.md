@@ -164,6 +164,7 @@ self contained: `stddef.h` and `stdio.h` have to be included ahead of it.
 | Option                  | Default            | Effect                                |
 | ----------------------- | ------------------ | ------------------------------------- |
 | `HH_BUILD_CLI`          | `ON`               | Build the `hh` command line app       |
+| `HH_BUILD_GUI`          | `OFF`              | Build the `hh-gui` desktop app        |
 | `HH_BUILD_TESTS`        | `ON` at top level  | Build the test binaries and register them with CTest |
 | `HH_WARNINGS_AS_ERRORS` | `OFF`              | `-Werror`, or `/WX` on MSVC           |
 | `HH_ENABLE_COVERAGE`    | `OFF`              | Instrument for gcov and lcov, GCC or Clang only |
@@ -175,10 +176,40 @@ cmake -S . -B build -DHH_WARNINGS_AS_ERRORS=ON -DCMAKE_BUILD_TYPE=Debug
 Warnings and the shared compile definitions live on one interface target,
 `hushhush::options`, which everything else links, so a flag is set in one place.
 
+## GUI
+
+`gui/` is the one C++17 directory in an otherwise C17 tree, and it is off by
+default: it needs GLFW and a GL stack installed (`libglfw3-dev` and
+`libgl1-mesa-dev` on Debian and Ubuntu), and it fetches
+[Dear ImGui](https://github.com/ocornut/imgui) and
+[ImPlot](https://github.com/epezent/implot) at configure time, both pinned via
+`HH_IMGUI_TAG` and `HH_IMPLOT_TAG`.
+
+```sh
+cmake -S . -B build -DHH_BUILD_GUI=ON
+cmake --build build -j
+./build/hh-gui
+```
+
+Every header under `core/` carries an `extern "C"` guard, placed after its own
+includes so that only core's declarations are wrapped and not the system headers
+they pull in. `<core/...>` is therefore included directly from C++, with nothing
+to remember at the call site.
+
+`implot_items.cpp` dominates a first build; it is one vendored translation unit
+compiled once, and nothing in `gui/` invalidates it afterwards. ImGui's and
+ImPlot's demo galleries are left out of the build for the same reason, so
+`ShowDemoWindow()` is unavailable until you add those two files back to
+`hh_imgui` in `gui/CMakeLists.txt`.
+
+Only the parts of the GUI that hold no ImGui state are unit tested, in
+`gui/tests/`; the suite opens no window and so runs headless like the other two.
+
 ## Tests
 
 Tests live next to the code they cover, in `{module}/tests/` 
-build into one binary each. The shared harness is in `testing/`: the vendored
+build into one binary each, registered with CTest as `core`, `cli` and `gui`
+(the last only when `HH_BUILD_GUI` is on). The shared harness is in `testing/`: the vendored
 [greatest](https://github.com/silentbicycle/greatest) header and the fixture
 helpers, held by `hushhush::testing`. No test cases live there.
 
