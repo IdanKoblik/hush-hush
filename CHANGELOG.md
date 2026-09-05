@@ -10,9 +10,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `hh-gui`, a desktop inspector. 
+- `analysis/stats.h`, four statistical tests over a carrier. None of them
+  decodes anything: each scores, as a percentage, how far the carrier is from
+  one whose low bits are random, which is what a payload leaves behind. The low
+  bit ratio is the codec's own rule read backwards, `n1 / (n0 + n1)` over the
+  colour samples. The chi-square test is Westfeld and Pfitzmann's pairs of
+  values attack, whose percentage is the probability that the sample histogram
+  is the one embedding would have left. The histogram of differences runs the
+  same ratio over `s[x + 1] - s[x]`, where correlated neighbours hold a
+  photograph well below half. The last is the pairs of values test again over
+  the quantised DCT coefficients, and is the only one a PNG cannot answer.
+- `hh analyse <target>`, which prints those four percentages and what the
+  carrier is, with `-e` to explain what each one measures.
+- An **Analysis** tab in `hh-gui`, showing the same four scores next to the
+  sample histogram, the balance of every pair of values, and the difference and
+  coefficient histograms split by parity, drawn with ImPlot.
 
 ### Changed
 
+- `inspect` command has been deleted. `hh analyse` replaces the end to end test
+  that covered it.
+- `file_type_name` moved into `fs/file.h`, where the CLI and the GUI both reach
+  it instead of keeping a copy each.
+- The rule for which channels a carrier's low bits live in left `analysis/inspect.c`
+  and became `pixel_color_channels` and `pixel_slot_to_sample`. Anything that
+  walks a carrier now goes through the same two functions, so a new reader
+  cannot quietly disagree with the codec about the alpha channel.
 - `analysis/inspect.h` now takes a `PixelBuffer` and returns the recovered
   bytes packed into an `LsbStream`, with `InspectRow` filled in place by the
   caller rather than allocated per byte. A megapixel carrier is millions of

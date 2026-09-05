@@ -20,6 +20,15 @@ struct PixelBuffer {
 int pixels_load(const char *target, struct PixelBuffer *out);
 void pixels_free(struct PixelBuffer *pixels);
 
+/* How many of a carrier's channels hold colour. The codec never writes into an
+ * alpha channel, so nothing that reads the low bits back may look at one
+ * either, and everything that walks a carrier goes through these two. */
+size_t pixel_color_channels(int channels);
+
+/* Turns a carrier slot, counted over colour samples alone, into the index of
+ * the sample holding it. */
+size_t pixel_slot_to_sample(size_t slot, size_t colors, size_t channels);
+
 struct LsbStream {
     unsigned char *bytes;
     size_t len;

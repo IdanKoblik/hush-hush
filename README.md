@@ -117,19 +117,48 @@ the prompt writes a plain container instead of an encrypted one:
 ./hh --verbose encode photo.png notes.txt -o innocent.png
 ```
 
-Read the raw low-bit stream of an image, one byte per line, as binary, hex and
-ASCII:
+Score how much a carrier looks like it is hiding something. Nothing is
+decoded: every method scores how far the carrier is from one whose low bits are
+random, which is what a payload leaves behind.
 
 ```sh
-./hh inspect innocent.png -l 20
+./hh analyse innocent.png
+[+] Target: innocent.png
+[+] Type: PNG, 1920 x 1080, 3 channels
+
+  Method                        Measured Random bits  Population
+  Low bit ratio                  49.94 %        50 %     6220800 colour samples
+  Chi-square (PoV)               87.31 %       100 %         128 pairs of values
+  Histogram of differences       49.21 %        50 %     6217920 neighbour pairs
+  DCT histogram (PoV)                n/a
 ```
 
-`inspect` prints the first `-l` lines when it is writing to a terminal, and
-everything when it is not, so pipe it to a file to read the whole stream:
+Read the table by how close **Measured** sits to **Random bits**, never as a
+verdict on its own: a photograph of noise looks embedded and a lightly filled
+carrier looks clean. The four methods are
+
+- **Low bit ratio**, the codec's own rule read backwards: the share of colour
+  samples whose low bit is set, `n1 / (n0 + n1)`. The coarsest of the four.
+- **Chi-square (PoV)**, Westfeld and Pfitzmann's pairs of values test. Writing
+  a bit moves a sample inside its pair, `2k` and `2k + 1`, and never out of it,
+  so a payload drives the two counts of a pair together while leaving their sum
+  alone. The percentage is the probability that the histogram is the one
+  embedding would have left.
+- **Histogram of differences**, the same ratio over `d = s[x + 1] - s[x]`
+  instead of over samples. The parity of a difference is one sample's low bit
+  xor the other's, so neighbours that agree, as they do all over a photograph,
+  hold the share below half; random low bits pull it to half.
+- **DCT histogram (PoV)**, the pairs of values test over the quantised
+  coefficients, where a JPEG carrier hides its bits. `n/a` on a PNG.
+
+`-e` prints what each one measures underneath the table:
 
 ```sh
-./hh inspect innocent.png > bits.txt
+./hh analyse innocent.png -e
 ```
+
+`hh-gui` shows the same four numbers under its **Analysis** tab, alongside the
+histograms they came out of.
 
 # Editor Integration
 

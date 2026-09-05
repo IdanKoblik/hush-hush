@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
         argv++;
     }
 
-    if (argc < 3) {
+    if (argc < 2) {
         print_usage(argv[0]);
         return 1;
     }

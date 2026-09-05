@@ -1,5 +1,7 @@
 #include "theme.hpp"
 
+#include <implot.h>
+
 namespace hh::theme {
 
 namespace {
@@ -113,6 +115,37 @@ void apply(void) {
     colors[ImGuiCol_TextSelectedBg] = accent_soft;
     colors[ImGuiCol_NavCursor] = accent;
     colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.02f, 0.02f, 0.03f, 0.60f);
+
+    apply_plots();
+}
+
+// The plots sit inside the panes rather than on top of them, so they drop the
+// frame ImPlot draws by default and borrow the pane's own background.
+void apply_plots(void) {
+    ImPlotStyle &style = ImPlot::GetStyle();
+
+    ImPlot::StyleColorsDark(&style);
+
+    style.PlotPadding = ImVec2(6.0f, 4.0f);
+    style.LabelPadding = ImVec2(4.0f, 3.0f);
+    style.LegendPadding = ImVec2(6.0f, 6.0f);
+    style.PlotBorderSize = 1.0f;
+    style.MinorAlpha = 0.20f;
+
+    ImVec4 *colors = style.Colors;
+
+    colors[ImPlotCol_FrameBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    colors[ImPlotCol_PlotBg] = ImVec4(0.09f, 0.10f, 0.12f, 1.00f);
+    colors[ImPlotCol_PlotBorder] = border;
+    colors[ImPlotCol_LegendBg] = popup_bg;
+    colors[ImPlotCol_LegendBorder] = border;
+    colors[ImPlotCol_LegendText] = text_dim;
+    colors[ImPlotCol_TitleText] = text;
+    colors[ImPlotCol_InlayText] = text_dim;
+    colors[ImPlotCol_AxisText] = text_dim;
+    colors[ImPlotCol_AxisGrid] = ImVec4(border.x, border.y, border.z, 0.60f);
+    colors[ImPlotCol_Selection] = accent_hover;
+    colors[ImPlotCol_Crosshairs] = text_faint;
 }
 
 } // namespace hh::theme

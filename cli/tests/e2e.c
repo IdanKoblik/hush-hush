@@ -1,6 +1,8 @@
 #include "greatest.h"
 #include "helpers.h"
 
+#include <core/analysis/stats.h>
+
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
@@ -343,18 +345,83 @@ TEST encode_rejects_an_unknown_codec(void) {
     PASS();
 }
 
-TEST inspect_reports_the_image_geometry(void) {
+TEST analyse_reports_the_carrier_and_every_method(void) {
     char *carrier = create_test_png(64, 64, 3);
     ASSERT(carrier != NULL);
 
-    const char *args[] = {"inspect", carrier, "-l", "2", NULL};
-    struct Run inspect = {0};
-    ASSERT_EQ(0, run_hh(args, "", &inspect));
-    ASSERT_EQm(said(&inspect), 0, inspect.exit_code);
-    ASSERT(strstr(inspect.output, "64x64") != NULL);
+    const char *args[] = {"analyse", carrier, NULL};
+    struct Run run = {0};
+    ASSERT_EQ(0, run_hh(args, "", &run));
+    ASSERT_EQm(said(&run), 0, run.exit_code);
+
+    ASSERT(strstr(run.output, "PNG") != NULL);
+    ASSERT(strstr(run.output, "64 x 64") != NULL);
+
+    for (size_t i = 0; i < STAT_METHOD_COUNT; i++)
+        ASSERTm(said(&run), strstr(run.output, stat_method_name((enum StatMethod)i)) != NULL);
+
+    /* A PNG has no coefficients, so the one method that needs them says so. */
+    ASSERT(strstr(run.output, "n/a") != NULL);
 
     unlink(carrier);
     free(carrier);
+    PASS();
+}
+
+TEST analyse_reaches_the_coefficients_of_a_jpeg(void) {
+    char *carrier = create_test_jpg(64, 64, 95);
+    ASSERT(carrier != NULL);
+
+    const char *args[] = {"analyse", carrier, NULL};
+    struct Run run = {0};
+    ASSERT_EQ(0, run_hh(args, "", &run));
+    ASSERT_EQm(said(&run), 0, run.exit_code);
+
+    ASSERT(strstr(run.output, "JPEG") != NULL);
+    ASSERTm(said(&run), strstr(run.output, "usable coefficients") != NULL);
+
+    unlink(carrier);
+    free(carrier);
+    PASS();
+}
+
+TEST analyse_explains_itself_on_demand(void) {
+    char *carrier = create_test_png(64, 64, 3);
+    ASSERT(carrier != NULL);
+
+    const char *quiet_args[] = {"analyse", carrier, NULL};
+    struct Run quiet = {0};
+    ASSERT_EQ(0, run_hh(quiet_args, "", &quiet));
+
+    const char *args[] = {"analyse", carrier, "-e", NULL};
+    struct Run run = {0};
+    ASSERT_EQ(0, run_hh(args, "", &run));
+    ASSERT_EQm(said(&run), 0, run.exit_code);
+
+    ASSERT(strlen(run.output) > strlen(quiet.output));
+    ASSERTm(said(&run), strstr(run.output, stat_method_summary(STAT_LSB_RATIO)) != NULL);
+
+    unlink(carrier);
+    free(carrier);
+    PASS();
+}
+
+TEST analyse_refuses_what_is_not_an_image(void) {
+    char *path = temp_path("notanimage");
+    ASSERT(path != NULL);
+
+    const char *args[] = {"analyse", path, NULL};
+    struct Run run = {0};
+    ASSERT_EQ(0, run_hh(args, "", &run));
+    ASSERT(run.exit_code != 0);
+
+    const char *missing[] = {"analyse", "/nonexistent/nope.png", NULL};
+    struct Run gone = {0};
+    ASSERT_EQ(0, run_hh(missing, "", &gone));
+    ASSERT(gone.exit_code != 0);
+
+    unlink(path);
+    free(path);
     PASS();
 }
 
@@ -400,7 +467,10 @@ SUITE(e2e_suite) {
     RUN_TEST(decode_fails_on_an_image_without_a_container);
     RUN_TEST(encode_fails_on_a_missing_target);
     RUN_TEST(encode_rejects_an_unknown_codec);
-    RUN_TEST(inspect_reports_the_image_geometry);
+    RUN_TEST(analyse_reports_the_carrier_and_every_method);
+    RUN_TEST(analyse_reaches_the_coefficients_of_a_jpeg);
+    RUN_TEST(analyse_explains_itself_on_demand);
+    RUN_TEST(analyse_refuses_what_is_not_an_image);
     RUN_TEST(no_arguments_prints_usage);
     RUN_TEST(verbose_keeps_the_program_name_in_usage);
     RUN_TEST(an_unknown_subcommand_fails);

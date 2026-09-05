@@ -2,7 +2,10 @@
 #include "theme.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
+
+#include <implot.h>
 
 namespace hh {
 
@@ -228,6 +231,102 @@ void draw_recovered_text(const std::vector<unsigned char> &bytes) {
     ImGui::PopStyleColor();
 }
 
+// Plots are tall enough to read a histogram out of and short enough that three
+// of them still fit a pane the reader has not widened.
+constexpr float plot_height = 150.0f;
+
+constexpr ImVec4 even_color = ImVec4(0.31f, 0.60f, 0.86f, 1.00f);
+constexpr ImVec4 odd_color = ImVec4(0.93f, 0.62f, 0.29f, 1.00f);
+
+// How far a measurement is from where a carrier full of random bits would land,
+// as 0 for the far end of the scale and 1 for sitting right on top of it.
+float closeness(const StatResult &result) {
+    const double span = result.reference > 50.0 ? 100.0 : 50.0;
+    const double distance = std::fabs(result.percent - result.reference) / span;
+
+    return static_cast<float>(1.0 - std::min(1.0, distance));
+}
+
+// Neutral until a measurement is genuinely near the reference, then warm. The
+// square is what keeps a merely unremarkable number from lighting up.
+ImVec4 score_color(const StatResult &result) {
+    const float t = closeness(result) * closeness(result);
+
+    return ImVec4(theme::text.x + (0.96f - theme::text.x) * t, theme::text.y + (0.74f - theme::text.y) * t, theme::text.z + (0.30f - theme::text.z) * t, 1.0f);
+}
+
+void method_row(StatMethod method, const StatResult &result) {
+    char text[32];
+
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    ImGui::TextUnformatted(stat_method_name(method));
+
+    // Pushed inside the tooltip window, because that is the one being wrapped.
+    if (ImGui::BeginItemTooltip()) {
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 26.0f);
+        ImGui::TextUnformatted(stat_method_summary(method));
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+
+    ImGui::TableNextColumn();
+
+    if (!result.applicable) {
+        ImGui::PushStyleColor(ImGuiCol_Text, theme::text_faint);
+        ImGui::TextUnformatted("n/a");
+        ImGui::PopStyleColor();
+
+        ImGui::TableNextColumn();
+        ImGui::TextUnformatted("");
+        return;
+    }
+
+    snprintf(text, sizeof(text), "%.2f %%", result.percent);
+    ImGui::PushStyleColor(ImGuiCol_Text, score_color(result));
+    ImGui::TextUnformatted(text);
+    ImGui::PopStyleColor();
+
+    ImGui::TableNextColumn();
+
+    snprintf(text, sizeof(text), "%.0f %%", result.reference);
+    ImGui::PushStyleColor(ImGuiCol_Text, theme::text_dim);
+    ImGui::TextUnformatted(text);
+    ImGui::PopStyleColor();
+}
+
+// Two histograms over one axis, one for the even bins and one for the odd. The
+// gap between them is what both parity tests are measuring.
+void parity_plot(const char *id, const char *x_label, const Series &even, const Series &odd) {
+    if (even.x.empty() && odd.x.empty())
+        return;
+
+    if (!ImPlot::BeginPlot(id, ImVec2(-1.0f, plot_height), ImPlotFlags_NoMouseText))
+        return;
+
+    ImPlot::SetupAxes(x_label, "count", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+    ImPlot::SetupLegend(ImPlotLocation_NorthEast);
+
+    ImPlotSpec spec;
+    spec.LineWeight = 0.0f;
+
+    spec.FillColor = even_color;
+    spec.LineColor = even_color;
+    ImPlot::PlotBars("even", even.x.data(), even.y.data(), static_cast<int>(even.x.size()), 0.9, spec);
+
+    spec.FillColor = odd_color;
+    spec.LineColor = odd_color;
+    ImPlot::PlotBars("odd", odd.x.data(), odd.y.data(), static_cast<int>(odd.x.size()), 0.9, spec);
+
+    ImPlot::EndPlot();
+}
+
+void section_note(const char *text) {
+    ImGui::PushStyleColor(ImGuiCol_Text, theme::text_faint);
+    ImGui::TextWrapped("%s", text);
+    ImGui::PopStyleColor();
+}
+
 void metadata_row(const char *label, const char *value) {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
@@ -360,6 +459,93 @@ void draw_stream_pane(const char *id, const char *summary, const std::vector<uns
 
     ImGui::EndChild();
     ImGui::PopStyleVar();
+}
+
+void draw_analysis_pane(const Document &doc) {
+    const Analysis &analysis = doc.analysis;
+
+    if (!analysis.ready) {
+        ImGui::Spacing();
+        section_note("Nothing here could be measured.");
+        return;
+    }
+
+    section_note("Nothing below decodes anything. Each method scores how much this carrier looks like one whose low bits are random, which is what a payload leaves behind. Hover a name to see what it measures.");
+    ImGui::Spacing();
+
+    ImGui::BeginChild("##analysis", ImVec2(0.0f, 0.0f));
+
+    if (ImGui::BeginTable("##methods", 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
+        ImGui::TableSetupColumn("Method", ImGuiTableColumnFlags_WidthStretch, 0.52f);
+        ImGui::TableSetupColumn("Measured", ImGuiTableColumnFlags_WidthStretch, 0.26f);
+        ImGui::TableSetupColumn("Random bits", ImGuiTableColumnFlags_WidthStretch, 0.22f);
+        ImGui::TableHeadersRow();
+
+        for (size_t i = 0; i < STAT_METHOD_COUNT; i++)
+            method_row(static_cast<StatMethod>(i), analysis.suite.results[i]);
+
+        ImGui::EndTable();
+    }
+
+    ImGui::Spacing();
+    ImGui::Spacing();
+    section_label("SAMPLE HISTOGRAM");
+
+    if (!analysis.samples.x.empty() && ImPlot::BeginPlot("##samples", ImVec2(-1.0f, plot_height), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
+        ImPlot::SetupAxes("sample value", "count", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+
+        ImPlotSpec spec;
+        spec.LineColor = theme::accent_hover;
+        spec.FillColor = theme::accent;
+        spec.FillAlpha = 0.35f;
+
+        const int count = static_cast<int>(analysis.samples.x.size());
+
+        ImPlot::PlotShaded("##area", analysis.samples.x.data(), analysis.samples.y.data(), count, 0.0, spec);
+        ImPlot::PlotLine("##line", analysis.samples.x.data(), analysis.samples.y.data(), count, spec);
+
+        ImPlot::EndPlot();
+    }
+
+    ImGui::Spacing();
+    section_label("PAIRS OF VALUES");
+    section_note("The share of each pair, 2k and 2k + 1, sitting on its even member. Writing a bit moves a sample inside its pair and never out of it, so a full payload flattens this onto the line.");
+
+    if (!analysis.pairs.x.empty() && ImPlot::BeginPlot("##pairs", ImVec2(-1.0f, plot_height), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
+        ImPlot::SetupAxes("pair", "even share (%)", ImPlotAxisFlags_AutoFit, 0);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, 100.0, ImPlotCond_Always);
+
+        const double edges[2] = {analysis.pairs.x.front(), analysis.pairs.x.back()};
+        const double half[2] = {50.0, 50.0};
+
+        ImPlotSpec line;
+        line.LineColor = theme::text_faint;
+        line.LineWeight = 1.0f;
+        ImPlot::PlotLine("##half", edges, half, 2, line);
+
+        ImPlotSpec dots;
+        dots.LineColor = theme::accent_hover;
+        dots.MarkerSize = 2.0f;
+        ImPlot::PlotScatter("##balance", analysis.pairs.x.data(), analysis.pairs.y.data(), static_cast<int>(analysis.pairs.x.size()), dots);
+
+        ImPlot::EndPlot();
+    }
+
+    ImGui::Spacing();
+    section_label("HISTOGRAM OF DIFFERENCES");
+    section_note("How often each step between neighbouring samples occurs. Neighbours agree all over a photograph, which keeps the even bars ahead; random low bits even the two colours out.");
+
+    parity_plot("##differences", "difference", analysis.differences_even, analysis.differences_odd);
+
+    if (!analysis.coefficients_even.x.empty()) {
+        ImGui::Spacing();
+        section_label("DCT COEFFICIENTS");
+        section_note("The same picture over the quantised coefficients, which is where a JPEG carrier hides its bits. Coefficients of 0 and 1 carry nothing and the codec leaves them alone.");
+
+        parity_plot("##coefficients", "coefficient", analysis.coefficients_even, analysis.coefficients_odd);
+    }
+
+    ImGui::EndChild();
 }
 
 } // namespace hh

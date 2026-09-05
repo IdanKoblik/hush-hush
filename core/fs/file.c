@@ -7,6 +7,19 @@ int is_image_file(enum FileType type) {
     return type == TYPE_JPEG_IMAGE || type == TYPE_PNG_IMAGE;
 }
 
+const char *file_type_name(enum FileType type) {
+    switch (type) {
+    case TYPE_PNG_IMAGE:
+        return "PNG";
+    case TYPE_JPEG_IMAGE:
+        return "JPEG";
+    case TYPE_NOT_FOUND:
+        return "not found";
+    default:
+        return "unknown";
+    }
+}
+
 enum FileType get_file_type(const char *target) {
     enum FileType type;
 

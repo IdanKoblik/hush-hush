@@ -28,5 +28,6 @@ inline constexpr ImVec4 match_current = ImVec4(0.96f, 0.74f, 0.30f, 0.65f);
 ImVec4 byte_color(ByteClass klass);
 
 void apply(void);
+void apply_plots(void);
 
 } // namespace hh::theme

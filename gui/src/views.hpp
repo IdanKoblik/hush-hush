@@ -28,5 +28,6 @@ struct Highlight {
 void draw_image_pane(const Document &doc, ImTextureID texture);
 void draw_hex_pane(const Document &doc, Selection &selection, const Highlight &highlight);
 void draw_stream_pane(const char *id, const char *summary, const std::vector<unsigned char> &bytes, Selection &selection, const Highlight &highlight);
+void draw_analysis_pane(const Document &doc);
 
 } // namespace hh

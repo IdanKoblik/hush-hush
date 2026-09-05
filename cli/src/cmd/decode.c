@@ -84,6 +84,6 @@ static int exec(int argc, char *argv[]) {
     return EXEC_OK;
 }
 
-static const struct Command decode_cmd = {.name = "decode", .description = "Decodes the data hidden inside of a target file.\n", .usage = "Usage: decode <target_file> -o <output_file>\n", .exec = exec};
+static const struct Command decode_cmd = {.name = "decode", .description = "Decodes the data hidden inside of a target file.", .usage = "Usage: decode <target_file> -o <output_file>\n", .exec = exec};
 
 COMMAND(decode_cmd);

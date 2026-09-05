@@ -9,6 +9,50 @@ namespace hh {
 
 namespace {
 
+void fill_analysis(FileType type, const PixelBuffer &pixels, const DctCoefficients *coefficients, Analysis &out) {
+    if (stats_run(type, &pixels, coefficients, &out.suite) != 0)
+        return;
+
+    size_t samples[STAT_SAMPLE_LEVELS];
+    if (stats_sample_histogram(&pixels, samples) == 0) {
+        for (int value = 0; value < STAT_SAMPLE_LEVELS; value++) {
+            out.samples.x.push_back(value);
+            out.samples.y.push_back(static_cast<double>(samples[value]));
+        }
+
+        for (int value = 0; value < STAT_SAMPLE_LEVELS; value += 2) {
+            const double total = static_cast<double>(samples[value]) + static_cast<double>(samples[value + 1]);
+            if (total <= 0.0)
+                continue;
+
+            out.pairs.x.push_back(value);
+            out.pairs.y.push_back(100.0 * static_cast<double>(samples[value]) / total);
+        }
+    }
+
+    size_t differences[STAT_DIFFERENCE_LEVELS];
+    if (stats_difference_histogram(&pixels, differences) == 0) {
+        for (int difference = -difference_window; difference <= difference_window; difference++) {
+            Series &series = (difference % 2 == 0) ? out.differences_even : out.differences_odd;
+
+            series.x.push_back(difference);
+            series.y.push_back(static_cast<double>(differences[difference + STAT_DIFFERENCE_ZERO]));
+        }
+    }
+
+    size_t values[STAT_COEFFICIENT_LEVELS];
+    if (coefficients && stats_coefficient_histogram(coefficients, values) == 0) {
+        for (int value = -STAT_COEFFICIENT_RANGE; value <= STAT_COEFFICIENT_RANGE; value++) {
+            Series &series = (value % 2 == 0) ? out.coefficients_even : out.coefficients_odd;
+
+            series.x.push_back(value);
+            series.y.push_back(static_cast<double>(values[value + STAT_COEFFICIENT_ZERO]));
+        }
+    }
+
+    out.ready = true;
+}
+
 void build_preview(const PixelBuffer &pixels, Document &doc) {
     int scale = 1;
     while (pixels.width / scale > preview_max_edge || pixels.height / scale > preview_max_edge)
@@ -60,16 +104,7 @@ std::string file_name_of(const std::string &path) {
 }
 
 const char *type_name(FileType type) {
-    switch (type) {
-    case TYPE_PNG_IMAGE:
-        return "PNG";
-    case TYPE_JPEG_IMAGE:
-        return "JPEG";
-    case TYPE_NOT_FOUND:
-        return "not found";
-    default:
-        return "unknown";
-    }
+    return file_type_name(type);
 }
 
 std::string human_size(size_t bytes) {
@@ -122,22 +157,23 @@ std::string open_document(const std::string &path, Document &out) {
     doc.bytes.assign(raw, raw + raw_len);
     doc.lsb.assign(stream.bytes, stream.bytes + stream.len);
 
-    // Only a JPEG has coefficients; a PNG leaves the DCT view empty.
-    if (type == TYPE_JPEG_IMAGE) {
-        DctCoefficients coefficients;
+    DctCoefficients coefficients;
+    const bool has_coefficients = type == TYPE_JPEG_IMAGE && dct_load(path.c_str(), &coefficients) == 0;
 
-        if (dct_load(path.c_str(), &coefficients) == 0) {
-            DctStream dct;
+    if (has_coefficients) {
+        DctStream dct;
 
-            if (inspect_dct(&coefficients, NO_LIMIT, &dct) == 0) {
-                doc.dct.assign(dct.bytes, dct.bytes + dct.len);
-                doc.coefficients = coefficients.count;
-                dct_stream_free(&dct);
-            }
-
-            dct_free(&coefficients);
+        if (inspect_dct(&coefficients, NO_LIMIT, &dct) == 0) {
+            doc.dct.assign(dct.bytes, dct.bytes + dct.len);
+            doc.coefficients = coefficients.count;
+            dct_stream_free(&dct);
         }
     }
+
+    fill_analysis(type, pixels, has_coefficients ? &coefficients : nullptr, doc.analysis);
+
+    if (has_coefficients)
+        dct_free(&coefficients);
 
     build_preview(pixels, doc);
 

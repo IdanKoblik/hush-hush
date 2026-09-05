@@ -179,6 +179,77 @@ TEST formats_names_and_sizes(void) {
     PASS();
 }
 
+TEST a_document_carries_its_analysis(void) {
+    const std::string path = write_test_png(64, 64, 3);
+    ASSERT(!path.empty());
+
+    hh::Document document;
+    ASSERT_STR_EQ("", hh::open_document(path, document).c_str());
+
+    const hh::Analysis &analysis = document.analysis;
+    ASSERT(analysis.ready);
+
+    ASSERT_EQ(TYPE_PNG_IMAGE, analysis.suite.type);
+    ASSERT_EQ(64, analysis.suite.width);
+    ASSERT_EQ(3, analysis.suite.channels);
+
+    ASSERT(analysis.suite.results[STAT_LSB_RATIO].applicable);
+    ASSERT(analysis.suite.results[STAT_CHI_SQUARE].applicable);
+    ASSERT(analysis.suite.results[STAT_HOD].applicable);
+    ASSERT_FALSE(analysis.suite.results[STAT_JPEG_HISTOGRAM].applicable);
+
+    ASSERT_EQ((size_t)STAT_SAMPLE_LEVELS, analysis.samples.x.size());
+    ASSERT_EQ(analysis.samples.x.size(), analysis.samples.y.size());
+
+    // The difference window split down the middle by parity: one more even bin
+    // than odd, because zero is even and the window is symmetric.
+    ASSERT_EQ((size_t)(hh::difference_window + 1), analysis.differences_even.x.size());
+    ASSERT_EQ((size_t)hh::difference_window, analysis.differences_odd.x.size());
+
+    ASSERT(analysis.coefficients_even.x.empty());
+    ASSERT(analysis.coefficients_odd.x.empty());
+
+    // A pair share is a percentage, and only populated pairs are plotted.
+    ASSERT(!analysis.pairs.x.empty());
+    ASSERT(analysis.pairs.x.size() <= (size_t)(STAT_SAMPLE_LEVELS / 2));
+
+    for (double share : analysis.pairs.y) {
+        ASSERT(share >= 0.0);
+        ASSERT(share <= 100.0);
+    }
+
+    unlink(path.c_str());
+    PASS();
+}
+
+TEST a_jpeg_analysis_reaches_the_coefficients(void) {
+    const std::string path = write_test_jpg(64, 64);
+    ASSERT(!path.empty());
+
+    hh::Document document;
+    ASSERT_STR_EQ("", hh::open_document(path, document).c_str());
+
+    const hh::Analysis &analysis = document.analysis;
+    ASSERT(analysis.ready);
+
+    ASSERT_EQ(TYPE_JPEG_IMAGE, analysis.suite.type);
+    ASSERT_EQ(document.coefficients, analysis.suite.coefficients);
+
+    ASSERT_EQ((size_t)(STAT_COEFFICIENT_RANGE + 1), analysis.coefficients_even.x.size());
+    ASSERT_EQ((size_t)STAT_COEFFICIENT_RANGE, analysis.coefficients_odd.x.size());
+
+    unlink(path.c_str());
+    PASS();
+}
+
+TEST an_unopened_document_has_no_analysis(void) {
+    hh::Document document;
+
+    ASSERT_FALSE(document.analysis.ready);
+    ASSERT(document.analysis.samples.x.empty());
+    PASS();
+}
+
 SUITE(document_suite) {
     RUN_TEST(opens_a_png_into_a_document);
     RUN_TEST(scales_a_large_preview_down);
@@ -187,4 +258,7 @@ SUITE(document_suite) {
     RUN_TEST(refuses_what_core_cannot_decode);
     RUN_TEST(reports_a_missing_file);
     RUN_TEST(formats_names_and_sizes);
+    RUN_TEST(a_document_carries_its_analysis);
+    RUN_TEST(a_jpeg_analysis_reaches_the_coefficients);
+    RUN_TEST(an_unopened_document_has_no_analysis);
 }

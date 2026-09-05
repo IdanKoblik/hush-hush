@@ -7,11 +7,11 @@
 
 #include <stb_image.h>
 
-static size_t color_channels(int channels) {
+size_t pixel_color_channels(int channels) {
     return (channels == 2 || channels == 4) ? (size_t)channels - 1 : (size_t)channels;
 }
 
-static size_t slot_to_sample(size_t slot, size_t colors, size_t channels) {
+size_t pixel_slot_to_sample(size_t slot, size_t colors, size_t channels) {
     if (colors == channels)
         return slot;
 
@@ -53,7 +53,7 @@ int inspect_lsb(const struct PixelBuffer *pixels, size_t limit, struct LsbStream
         return -1;
 
     size_t channels = (size_t)pixels->channels;
-    size_t colors = color_channels(pixels->channels);
+    size_t colors = pixel_color_channels(pixels->channels);
     if (colors == 0)
         return -1;
 
@@ -71,7 +71,7 @@ int inspect_lsb(const struct PixelBuffer *pixels, size_t limit, struct LsbStream
         unsigned char byte = 0;
 
         for (size_t bit = 0; bit < 8; bit++) {
-            size_t sample = slot_to_sample(i * 8 + bit, colors, channels);
+            size_t sample = pixel_slot_to_sample(i * 8 + bit, colors, channels);
             if (sample >= pixels->len)
                 break;
 

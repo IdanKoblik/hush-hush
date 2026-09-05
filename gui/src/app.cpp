@@ -626,6 +626,11 @@ void App::draw_streams(void) {
         ImGui::EndTabItem();
     }
 
+    if (ImGui::BeginTabItem("Analysis")) {
+        draw_analysis_pane(document_);
+        ImGui::EndTabItem();
+    }
+
     ImGui::EndTabBar();
 }
 

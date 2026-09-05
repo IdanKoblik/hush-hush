@@ -1,6 +1,7 @@
 #include "../args.h"
 #include "../prompt.h"
 #include "command.h"
+#include "core/fs/checksum.h"
 #include <core/codecs/codec.h>
 #include <core/fs/file.h>
 #include <core/handlers/image.h>
@@ -23,8 +24,10 @@ static int exec(int argc, char *argv[]) {
     argc++;
     argv--;
 
+    bool verify = false;
     flag_str_var(&output_file, "o", NULL, "Output file");
-    flag_str_var(&method, "c", "lsbr", "Encoding method");
+    flag_str_var(&method, "c", "lsbm", "Encoding method");
+    flag_bool_var(&verify, "verify", false, "Check encoding result");
 
     if (!flag_parse(argc, argv)) {
         flag_print_error(stderr);
@@ -42,6 +45,18 @@ static int exec(int argc, char *argv[]) {
     if (type == TYPE_NOT_FOUND) {
         ERROR("Target file was not found");
         return EXEC_GENERIC_ERROR;
+    }
+
+    if (!is_image_file(type)) {
+        ERROR("UNSUPPORTED");
+        return EXEC_GENERIC_ERROR;
+    }
+
+    if (type == TYPE_PNG_IMAGE && (codec != CODEC_LSB_REPLACEMENT && codec != CODEC_LSB_MATCHING)) {
+        ERROR("Invalid codec for a png image");
+        return EXEC_GENERIC_ERROR;
+    } else if (type == TYPE_JPEG_IMAGE) {
+        codec = CODEC_DCT;
     }
 
     char passphrase[PASSPHRASE_MAX];
@@ -66,7 +81,6 @@ static int exec(int argc, char *argv[]) {
         return EXEC_GENERIC_ERROR;
     }
 
-    int encode_status = -1;
     if (is_image_file(type)) {
         struct ImageCtx ctx = {.source_file = target,
                                .output_file = output_file,
@@ -76,19 +90,53 @@ static int exec(int argc, char *argv[]) {
 
                                .passphrase = passphrase[0] ? passphrase : NULL};
 
-        encode_status = encode_image(&ctx, data, data_len);
+        if (encode_image(&ctx, data, data_len) < 0) {
+            ERROR("Failed to encode data to the targeted file");
+            goto fail;
+        }
+
+        if (verify) {
+            struct ImageCtx check = ctx;
+            check.source_file = output_file;
+            check.codec_type = CODEC_UNKNOWN;
+
+            unsigned char *output_data = NULL;
+            size_t output_data_len = 0;
+
+            if (decode_image(&check, &output_data, &output_data_len) < 0) {
+                ERROR("Failed to decode the encoded target");
+                goto fail;
+            }
+
+            bool verified = false;
+
+            if (output_data_len != data_len)
+                ERROR("Read %zu bytes back out of %s but encoded %zu, encoding failed", output_data_len, output_file, data_len);
+            else if (calculate_checksum(data, data_len) != calculate_checksum(output_data, output_data_len))
+                ERROR("What came back out of %s is not what went in, encoding failed", output_file);
+            else
+                verified = true;
+
+            sodium_memzero(output_data, output_data_len);
+            free(output_data);
+
+            if (!verified)
+                goto fail;
+
+            INFO("Verified %zu bytes read back from %s", data_len, output_file);
+        }
     }
 
     sodium_memzero(passphrase, sizeof(passphrase));
     free(data);
-    if (encode_status < 0) {
-        ERROR("Failed to encode data to the targeted file");
-        return EXEC_GENERIC_ERROR;
-    }
 
     return EXEC_OK;
+fail:
+    sodium_memzero(passphrase, sizeof(passphrase));
+    free(data);
+    return EXEC_GENERIC_ERROR;
 }
 
-static const struct Command encode_cmd = {.name = "encode", .description = "Encodes a data isnside of a target file.\n", .usage = "Usage: encode <target_file> <data_file> -o <output_file> -c <codec>\n", .exec = exec};
+static const struct Command encode_cmd = {.name = "encode", .description = "Encodes a data isnside of a target file.", .usage = "Usage: encode <target_file> <data_file> -o <output_file> -c <codec> [-verify]\n", .exec = exec};
 
 COMMAND(encode_cmd);
