@@ -14,11 +14,6 @@ static int exec(int argc, char *argv[]) {
     return EXEC_OK;
 }
 
-static const struct Command help_command = {
-    .name = "help",
-    .description = "Show list of available subcommands",
-    .usage = "",
-    .exec = exec
-};
+static const struct Command help_command = {.name = "help", .description = "Show list of available subcommands", .usage = "", .exec = exec};
 
 COMMAND(help_command);

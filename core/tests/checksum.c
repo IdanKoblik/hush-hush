@@ -1,5 +1,5 @@
-#include "greatest.h"
 #include "core/fs/checksum.h"
+#include "greatest.h"
 
 TEST test_empty_data(void) {
     ASSERT_EQ(0, calculate_checksum(NULL, 0));
@@ -59,4 +59,3 @@ SUITE(checksum_suite) {
     RUN_TEST(test_max_values);
     RUN_TEST(test_length_is_respected);
 }
-
