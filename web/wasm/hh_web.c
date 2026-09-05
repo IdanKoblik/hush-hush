@@ -154,9 +154,7 @@ EMSCRIPTEN_KEEPALIVE char *hh_analyse(const char *target) {
     json_fmt(&json, ",\"coefficients\":%zu", suite.coefficients);
     json_fmt(&json, ",\"capacity\":%zu", carrier_capacity(&suite));
 
-    json_fmt(&json, ",\"overhead\":{\"plain\":%zu,\"encrypted\":%zu}",
-             (size_t)(HUSH_PREAMBLE_PLAIN_LEN + HUSH_END_MARKER_LEN),
-             (size_t)(HUSH_PREAMBLE_ENC_LEN + HUSH_HEADER_SEALED_LEN + crypto_secretbox_MACBYTES));
+    json_fmt(&json, ",\"overhead\":{\"plain\":%zu,\"encrypted\":%zu}", (size_t)(HUSH_PREAMBLE_PLAIN_LEN + HUSH_END_MARKER_LEN), (size_t)(HUSH_PREAMBLE_ENC_LEN + HUSH_HEADER_SEALED_LEN + crypto_secretbox_MACBYTES));
 
     json_text(&json, ",\"stats\":[");
 
