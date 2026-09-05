@@ -48,6 +48,10 @@ file(GLOB_RECURSE HH_VENDOR_SOURCES CONFIGURE_DEPENDS
     "${PROJECT_SOURCE_DIR}/third_party/*.c"
 )
 
+if(EMSCRIPTEN)
+    list(FILTER HH_VENDOR_SOURCES EXCLUDE REGEX "/flag\\.c$")
+endif()
+
 add_library(hh_core STATIC
     ${HH_CORE_SOURCES}
     ${HH_CORE_HEADERS}

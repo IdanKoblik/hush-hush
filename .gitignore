@@ -63,3 +63,8 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Web
+web/.deps/*
+web/.build/*
+web/dist/*

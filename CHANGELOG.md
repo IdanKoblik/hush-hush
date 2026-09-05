@@ -5,6 +5,33 @@ All notable changes to Hush Hush are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `web/`, the core compiled to WebAssembly behind a single page. `index.html`
+  carries the markup, the styles and the router; `wasm/hh_web.c` exposes encode,
+  decode and analyse over `core/` unchanged, taking paths out of Emscripten's
+  in-memory file system so nothing about the C had to move. The page is ordinary
+  htmx: an extension answers the requests htmx would have sent by running the
+  wasm module and handing the result to `htmx.swap()`, so targets, out of band
+  swaps and settling all behave as they would against a server. Carriers never
+  leave the tab.
+- `HH_BUILD_WEB`, off by default and Emscripten only. `web/build.sh` fetches and
+  builds the wasm dependencies into `web/.deps` and drives it.
+- `web/wasm/smoke.mjs`, a round trip through the built module under node,
+  covering both carrier types plain and encrypted.
+- `callable-web.yml`, which builds the page and runs that round trip. CI calls
+  it beside the three suites rather than behind them, since it shares no
+  toolchain with them. On a push to main, and again once a release is published,
+  the built page is deployed to GitHub Pages.
+
+### Changed
+
+- `third_party/flag.c` is excluded from the library under Emscripten. It asserts
+  that `size_t` is as wide as `unsigned long long`, which wasm32 is not, and it
+  is the CLI's argument parser -- nothing that runs in a browser has an argv.
+
 ## [1.0.0]
 
 ### Added

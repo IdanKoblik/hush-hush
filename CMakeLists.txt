@@ -21,6 +21,9 @@ option(HH_BUILD_CLI          "Build the hh command line app"     ON)
 # Off by default: unlike the CLI it needs GLFW and a GL stack present, and it
 # fetches Dear ImGui and ImPlot at configure time.
 option(HH_BUILD_GUI          "Build the hh-gui desktop app"      OFF)
+# Off by default and Emscripten only: it needs emcc and wasm builds of
+# libsodium and libjpeg. web/build.sh sets all three up.
+option(HH_BUILD_WEB          "Build the wasm module behind web/index.html" OFF)
 option(HH_BUILD_TESTS        "Build the test suite"              ${PROJECT_IS_TOP_LEVEL})
 option(HH_WARNINGS_AS_ERRORS "Turn compiler warnings into errors" OFF)
 option(HH_ENABLE_COVERAGE    "Instrument the build for gcov/lcov" OFF)
@@ -83,4 +86,8 @@ endif()
 
 if(HH_BUILD_GUI)
     add_subdirectory(gui)
+endif()
+
+if(HH_BUILD_WEB)
+    add_subdirectory(web)
 endif()

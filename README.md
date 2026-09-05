@@ -199,6 +199,7 @@ self contained: `stddef.h` and `stdio.h` have to be included ahead of it.
 | ----------------------- | ------------------ | ------------------------------------- |
 | `HH_BUILD_CLI`          | `ON`               | Build the `hh` command line app       |
 | `HH_BUILD_GUI`          | `OFF`              | Build the `hh-gui` desktop app        |
+| `HH_BUILD_WEB`          | `OFF`              | Build the wasm module behind `web/index.html`, Emscripten only |
 | `HH_BUILD_TESTS`        | `ON` at top level  | Build the test binaries and register them with CTest |
 | `HH_WARNINGS_AS_ERRORS` | `OFF`              | `-Werror`, or `/WX` on MSVC           |
 | `HH_ENABLE_COVERAGE`    | `OFF`              | Instrument for gcov and lcov, GCC or Clang only |
@@ -238,6 +239,25 @@ ImPlot's demo galleries are left out of the build for the same reason, so
 
 Only the parts of the GUI that hold no ImGui state are unit tested, in
 `gui/tests/`; the suite opens no window and so runs headless like the other two.
+
+## Web
+
+`web/` is the core compiled to WebAssembly behind a single htmx page: the same
+encode, decode and analyse, in a browser, with the carrier never leaving the
+tab. It needs `emcc` on PATH and is driven by its own script, which fetches and
+builds the wasm dependencies into `web/.deps`.
+
+```sh
+./web/build.sh
+python3 -m http.server -d web 8000
+```
+
+Then open <http://localhost:8000>. `web/README.md` covers how htmx's requests
+are answered out of the wasm module rather than over the network, and what the
+build leaves out.
+
+CI builds the page beside the test suites and publishes it to GitHub Pages on
+every push to main, and again whenever a release is published.
 
 ## Tests
 

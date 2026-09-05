@@ -61,6 +61,12 @@ jobs:
       build-cli: false
       build-gui: true
 
+  web:
+    name: Web
+    uses: ./.github/workflows/callable-web.yml
+    with:
+      upload: ${{ github.event_name != 'pull_request' }}
+
   # Formatting is a style gate, not a build gate, so it runs once the suites have
   # shown the tree is actually sound.
   format:
@@ -79,6 +85,41 @@ jobs:
     name: Coverage
     needs: [core-tests, cli-tests, gui-tests]
     uses: ./.github/workflows/callable-coverage.yml
+
+  # Pushing to main publishes the page, and so does cutting a release, once the
+  # release itself is out -- so the two never disagree about what is live.
+  # format and coverage stand in for the three suites here: both already wait on
+  # all of them, and neither has run if any of them failed.
+  pages:
+    name: Deploy to Pages
+    needs: [web, format, coverage, publish]
+    if: >-
+      always()
+      && needs.web.result == 'success'
+      && needs.format.result == 'success'
+      && needs.coverage.result == 'success'
+      && (
+           (github.event_name == 'push' && github.ref == 'refs/heads/main')
+           || (github.event_name == 'workflow_dispatch' && needs.publish.result == 'success')
+         )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    # Pages runs one deployment at a time, and a cancelled one leaves the site
+    # on the previous version, so these queue instead of replacing each other.
+    # Deliberately its own group, outside the workflow wide one at the top.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v4
 
   prepare:
     name: Prepare release
