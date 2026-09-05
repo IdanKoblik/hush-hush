@@ -133,28 +133,55 @@ random, which is what a payload leaves behind.
 
   Method                        Measured Random bits  Population
   Low bit ratio                  49.94 %        50 %     6220800 colour samples
-  Chi-square (PoV)               87.31 %       100 %         128 pairs of values
+  Chi-square (PoV)               87.31 %       100 %         760 blocks
   Histogram of differences       49.21 %        50 %     6217920 neighbour pairs
   DCT histogram (PoV)                n/a
 ```
 
 Read the table by how close **Measured** sits to **Random bits**, never as a
 verdict on its own: a photograph of noise looks embedded and a lightly filled
-carrier looks clean. The four methods are
+carrier looks clean. A JPEG answers the last row and nothing else — the other
+three read the low bits of decoded samples, and a JPEG's payload is not there.
+The four methods are
 
 - **Low bit ratio**, the codec's own rule read backwards: the share of colour
   samples whose low bit is set, `n1 / (n0 + n1)`. The coarsest of the four.
 - **Chi-square (PoV)**, Westfeld and Pfitzmann's pairs of values test. Writing
   a bit moves a sample inside its pair, `2k` and `2k + 1`, and never out of it,
   so a payload drives the two counts of a pair together while leaving their sum
-  alone. The percentage is the probability that the histogram is the one
-  embedding would have left.
+  alone. It is asked one block of the carrier at a time and the percentage is
+  the share of blocks whose pairs came back level; over a whole carrier at once
+  the test saturates, reading zero for anything whose histogram was spiky to
+  begin with and a hundred for anything already smooth. Per block the share
+  tracks how much of the carrier was used: a half filled one reads near 50 %.
 - **Histogram of differences**, the same ratio over `d = s[x + 1] - s[x]`
   instead of over samples. The parity of a difference is one sample's low bit
   xor the other's, so neighbours that agree, as they do all over a photograph,
   hold the share below half; random low bits pull it to half.
-- **DCT histogram (PoV)**, the pairs of values test over the quantised
-  coefficients, where a JPEG carrier hides its bits. `n/a` on a PNG.
+- **DCT histogram (PoV)**, the same test, also per block, over the quantised
+  coefficients, where a JPEG carrier hides its bits. `n/a` on a PNG, and the
+  only one of the four a JPEG answers.
+
+Three things read clean on the chi-square rows no matter how full the carrier
+is, and none of them is a fault in the measurement:
+
+- **LSB matching.** `-c lsbm` moves a sample by one instead of replacing its low
+  bit, so it never drives a pair of values together. Defeating this test is what
+  it is for.
+- **A plain container holding a real file.** The test looks for *balanced* bits.
+  A payload written without a passphrase goes in as it is, and no ordinary file
+  is a balanced bitstream, so the pairs never level out. Filling a carrier a
+  quarter full with random bytes reads 17 %; the same quarter filled with an
+  actual JPEG reads 0 %.
+- **A small encrypted payload.** Encryption scatters the payload across the
+  whole carrier rather than laying it down from the start, so instead of a few
+  blocks being full, every block is a little bit full and none of them crosses
+  the line. A quarter full reads 3 %, where the same payload written plainly and
+  sequentially reads 17 %.
+
+The first two are the point of the codec and the container respectively, so the
+honest reading of a clean table is "nothing was found", never "nothing is
+there".
 
 `-e` prints what each one measures underneath the table:
 
@@ -163,7 +190,8 @@ carrier looks clean. The four methods are
 ```
 
 `hh-gui` shows the same four numbers under its **Analysis** tab, alongside the
-histograms they came out of.
+histograms they came out of, and so does the **Analyse** tab of the web page in
+`web/`.
 
 # Editor Integration
 

@@ -559,7 +559,8 @@ footer.colophon code {
     <h2>Analyse</h2>
     <p class="hint">Scores how far a carrier is from one whose low bits are
     random, which is what a payload leaves behind. Nothing is decoded, and no
-    single number is a verdict.</p>
+    single number is a verdict. A JPEG answers the coefficient row alone: the
+    other three read decoded samples, and a JPEG's payload is not in those.</p>
 
     <div class="field">
         <label for="carrier">Carrier</label>
@@ -928,7 +929,9 @@ const routes = {
                 <p class="hint" style="margin:14px 0 0">Read each row by how close
                 <em>measured</em> sits to <em>random bits</em>, never as a verdict on its
                 own: a photograph of noise looks embedded and a lightly filled carrier
-                looks clean.</p>
+                looks clean. LSB matching leaves no pairs of values signature at all,
+                which is what it is for, so an <code>lsbm</code> carrier reads clean on
+                the chi-square rows however full it is.</p>
 
                 <details class="explain">
                     <summary>What each one measures</summary>

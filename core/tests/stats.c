@@ -113,7 +113,7 @@ TEST the_low_bit_ratio_balances_at_half(void) {
 }
 
 /* Every pair of values holding the same count is exactly what a full payload
- * leaves behind, so the test should be as sure as it gets. */
+ * leaves behind, so every block of this carrier looks embedded. */
 TEST chi_square_is_certain_when_every_pair_is_level(void) {
     unsigned char samples[STAT_SAMPLE_LEVELS * 8];
     for (size_t i = 0; i < sizeof(samples); i++)
@@ -126,7 +126,7 @@ TEST chi_square_is_certain_when_every_pair_is_level(void) {
 
     ASSERT(result.applicable);
     ASSERT_IN_RANGE(100.0, result.percent, 0.001);
-    ASSERT_EQ((size_t)(STAT_SAMPLE_LEVELS / 2), result.population);
+    ASSERT_EQ((size_t)1, result.population);
     PASS();
 }
 
@@ -144,10 +144,40 @@ TEST chi_square_sees_through_a_lopsided_histogram(void) {
 
     ASSERT(result.applicable);
     ASSERT(result.percent < 0.001);
+    ASSERT_EQ((size_t)1, result.population);
     PASS();
 }
 
-/* A single populated pair spends the one degree of freedom there is. */
+/* Half the carrier written over and half of it left alone. The share of blocks
+ * that come back embedded is the share that was used, which is the whole point
+ * of asking per block: one answer for the carrier could not tell the two
+ * halves apart at all. */
+TEST chi_square_measures_how_much_of_the_carrier_was_used(void) {
+    static unsigned char samples[131072];
+    const size_t half = sizeof(samples) / 2;
+
+    for (size_t i = 0; i < sizeof(samples); i++)
+        samples[i] = (i < half)
+                         /* Level pairs, as random low bits leave them. */
+                         ? (unsigned char)(i % STAT_SAMPLE_LEVELS)
+                         /* Every odd value empty, which no payload could do. */
+                         : (unsigned char)((i % (STAT_SAMPLE_LEVELS / 2)) * 2);
+
+    struct PixelBuffer pixels = {.samples = samples, .len = sizeof(samples), .width = (int)sizeof(samples), .height = 1, .channels = 1};
+
+    struct StatResult result;
+    ASSERT_EQ(0, stats_chi_square(&pixels, &result));
+
+    ASSERT(result.applicable);
+    ASSERT_IN_RANGE(50.0, result.percent, 10.0);
+
+    /* Several blocks, not one verdict for the whole carrier. */
+    ASSERT(result.population >= 4);
+    PASS();
+}
+
+/* A single populated pair spends the one degree of freedom there is, and a
+ * block that cannot answer is left out rather than counted as clean. */
 TEST chi_square_refuses_to_guess_from_one_pair(void) {
     unsigned char samples[64];
     memset(samples, 128, sizeof(samples));
@@ -158,7 +188,39 @@ TEST chi_square_refuses_to_guess_from_one_pair(void) {
     ASSERT_EQ(0, stats_chi_square(&pixels, &result));
 
     ASSERT_FALSE(result.applicable);
-    ASSERT_EQ((size_t)1, result.population);
+    ASSERT_EQ((size_t)0, result.population);
+    PASS();
+}
+
+/*
+ * The three pixel methods read the low bits of decoded samples, which is where
+ * a PNG keeps its payload. A JPEG keeps it in the quantised coefficients, and
+ * by the time those have been through the inverse DCT the change is spread
+ * over a block and clamped, so what these would report is the decoder talking
+ * rather than the payload. They report nothing instead.
+ */
+TEST the_pixel_methods_stay_out_of_a_jpeg(void) {
+    unsigned char samples[64];
+    for (size_t i = 0; i < sizeof(samples); i++)
+        samples[i] = (unsigned char)(i * 3);
+
+    struct PixelBuffer pixels = {.samples = samples, .len = sizeof(samples), .width = 8, .height = 8, .channels = 1};
+
+    struct StatSuite suite;
+    ASSERT_EQ(0, stats_run(TYPE_JPEG_IMAGE, &pixels, NULL, &suite));
+
+    ASSERT_FALSE(suite.results[STAT_LSB_RATIO].applicable);
+    ASSERT_FALSE(suite.results[STAT_CHI_SQUARE].applicable);
+    ASSERT_FALSE(suite.results[STAT_HOD].applicable);
+
+    /* The reference still stands, so a reader is told what the column meant. */
+    ASSERT_IN_RANGE(50.0, suite.results[STAT_LSB_RATIO].reference, 0.001);
+
+    /* The very same samples, read as the PNG they would be, do answer. */
+    ASSERT_EQ(0, stats_run(TYPE_PNG_IMAGE, &pixels, NULL, &suite));
+
+    ASSERT(suite.results[STAT_LSB_RATIO].applicable);
+    ASSERT(suite.results[STAT_HOD].applicable);
     PASS();
 }
 
@@ -283,7 +345,7 @@ TEST the_dct_histogram_is_certain_when_every_pair_is_level(void) {
     ASSERT(result.applicable);
     ASSERT_IN_RANGE(100.0, result.percent, 0.001);
     ASSERT_IN_RANGE(100.0, result.reference, 0.001);
-    ASSERT_EQ((size_t)(STAT_COEFFICIENT_RANGE - 1), result.population);
+    ASSERT_EQ((size_t)1, result.population);
     PASS();
 }
 
@@ -350,7 +412,7 @@ TEST a_png_runs_everything_but_the_coefficients(void) {
     PASS();
 }
 
-TEST a_jpeg_runs_the_coefficients_too(void) {
+TEST a_jpeg_reports_only_the_coefficients(void) {
     char *path = create_test_jpg(CARRIER_SIZE, CARRIER_SIZE, CARRIER_QUALITY);
     ASSERT(path != NULL);
 
@@ -359,6 +421,11 @@ TEST a_jpeg_runs_the_coefficients_too(void) {
 
     ASSERT_EQ(TYPE_JPEG_IMAGE, suite.type);
     ASSERT(suite.coefficients > 0);
+
+    /* Nothing in the pixel domain: the payload was never there. */
+    ASSERT_FALSE(suite.results[STAT_LSB_RATIO].applicable);
+    ASSERT_FALSE(suite.results[STAT_CHI_SQUARE].applicable);
+    ASSERT_FALSE(suite.results[STAT_HOD].applicable);
 
     for (size_t i = 0; i < STAT_METHOD_COUNT; i++) {
         const struct StatResult *result = &suite.results[i];
@@ -442,7 +509,9 @@ SUITE(stats_suite) {
     RUN_TEST(the_low_bit_ratio_balances_at_half);
     RUN_TEST(chi_square_is_certain_when_every_pair_is_level);
     RUN_TEST(chi_square_sees_through_a_lopsided_histogram);
+    RUN_TEST(chi_square_measures_how_much_of_the_carrier_was_used);
     RUN_TEST(chi_square_refuses_to_guess_from_one_pair);
+    RUN_TEST(the_pixel_methods_stay_out_of_a_jpeg);
     RUN_TEST(differences_are_taken_along_a_row_only);
     RUN_TEST(the_difference_histogram_keeps_the_sign);
     RUN_TEST(hod_bottoms_out_on_a_flat_carrier);
@@ -453,7 +522,7 @@ SUITE(stats_suite) {
     RUN_TEST(the_dct_histogram_sees_an_untouched_carrier);
     RUN_TEST(every_method_names_itself);
     RUN_TEST(a_png_runs_everything_but_the_coefficients);
-    RUN_TEST(a_jpeg_runs_the_coefficients_too);
+    RUN_TEST(a_jpeg_reports_only_the_coefficients);
     RUN_TEST(refuses_what_it_cannot_read);
     RUN_TEST(an_encoded_carrier_moves_towards_the_reference);
 }

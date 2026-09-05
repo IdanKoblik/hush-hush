@@ -9,6 +9,10 @@
 #define SAMPLE_PAIRS (STAT_SAMPLE_LEVELS / 2)
 #define COEFFICIENT_PAIRS (STAT_COEFFICIENT_RANGE - 1)
 
+#define CHI_BLOCK_SAMPLES 8192
+#define CHI_BLOCK_COEFFICIENTS 4096
+#define CHI_EMBEDDED 0.5
+
 #define GAMMA_ITERATIONS 300
 #define GAMMA_EPSILON 3.0e-14
 #define GAMMA_TINY 1.0e-300
@@ -132,11 +136,12 @@ const char *stat_method_summary(enum StatMethod method) {
     case STAT_LSB_RATIO:
         return "The share of colour samples whose low bit is set, n1 / (n0 + n1). Random payload bits balance it at 50 %.";
     case STAT_CHI_SQUARE:
-        return "How well the sample histogram matches the flattened pairs that LSB replacement leaves behind, as a probability. A carrier with nothing in it sits near 0 %.";
+        return "The share of blocks whose pairs of values are as level as LSB replacement would leave them. Measured per block rather than over the whole carrier, where the test saturates; on a sequential payload the share tracks how much of the carrier "
+               "was used.";
     case STAT_HOD:
         return "The share of differences between neighbouring samples that are odd. Correlated neighbours hold a photograph below 50 %; random low bits pull it to 50 %.";
     case STAT_JPEG_HISTOGRAM:
-        return "The same pairs of values test over the quantised DCT coefficients, which is where a JPEG carrier hides its bits.";
+        return "The same pairs of values test, per block, over the quantised DCT coefficients, which is where a JPEG carrier hides its bits and the only place worth looking on one.";
     default:
         return "";
     }
@@ -147,36 +152,46 @@ const char *stat_method_unit(enum StatMethod method) {
     case STAT_LSB_RATIO:
         return "colour samples";
     case STAT_CHI_SQUARE:
-        return "pairs of values";
+        return "blocks";
     case STAT_HOD:
         return "neighbour pairs";
     case STAT_JPEG_HISTOGRAM:
-        return "pairs of values";
+        return "blocks";
     default:
         return "";
     }
 }
 
-int stats_sample_histogram(const struct PixelBuffer *pixels, size_t *out) {
-    if (!pixels || !pixels->samples || !out)
-        return -1;
-
+/* Slots [start, end) alone, so the same walk serves the whole carrier and one
+ * block of it. Slots are counted over colour samples, which is what the codec
+ * writes into, so an alpha channel is skipped here exactly as it is there. */
+static void sample_histogram_range(const struct PixelBuffer *pixels, size_t start, size_t end, size_t *out) {
     const size_t channels = (size_t)pixels->channels;
     const size_t colors = pixel_color_channels(pixels->channels);
-    if (colors == 0)
-        return -1;
 
     memset(out, 0, STAT_SAMPLE_LEVELS * sizeof(*out));
 
-    const size_t slots = (size_t)pixels->width * (size_t)pixels->height * colors;
-
-    for (size_t slot = 0; slot < slots; slot++) {
+    for (size_t slot = start; slot < end; slot++) {
         const size_t sample = pixel_slot_to_sample(slot, colors, channels);
         if (sample >= pixels->len)
             break;
 
         out[pixels->samples[sample]]++;
     }
+}
+
+static size_t sample_slots(const struct PixelBuffer *pixels) {
+    return (size_t)pixels->width * (size_t)pixels->height * pixel_color_channels(pixels->channels);
+}
+
+int stats_sample_histogram(const struct PixelBuffer *pixels, size_t *out) {
+    if (!pixels || !pixels->samples || !out)
+        return -1;
+
+    if (pixel_color_channels(pixels->channels) == 0)
+        return -1;
+
+    sample_histogram_range(pixels, 0, sample_slots(pixels), out);
 
     return 0;
 }
@@ -211,13 +226,10 @@ int stats_difference_histogram(const struct PixelBuffer *pixels, size_t *out) {
     return 0;
 }
 
-int stats_coefficient_histogram(const struct DctCoefficients *coefficients, size_t *out) {
-    if (!coefficients || !coefficients->values || !out)
-        return -1;
-
+static void coefficient_histogram_range(const struct DctCoefficients *coefficients, size_t start, size_t end, size_t *out) {
     memset(out, 0, STAT_COEFFICIENT_LEVELS * sizeof(*out));
 
-    for (size_t i = 0; i < coefficients->count; i++) {
+    for (size_t i = start; i < end; i++) {
         const int value = coefficients->values[i];
 
         if (value < -STAT_COEFFICIENT_RANGE || value > STAT_COEFFICIENT_RANGE)
@@ -225,6 +237,13 @@ int stats_coefficient_histogram(const struct DctCoefficients *coefficients, size
 
         out[value + STAT_COEFFICIENT_ZERO]++;
     }
+}
+
+int stats_coefficient_histogram(const struct DctCoefficients *coefficients, size_t *out) {
+    if (!coefficients || !coefficients->values || !out)
+        return -1;
+
+    coefficient_histogram_range(coefficients, 0, coefficients->count, out);
 
     return 0;
 }
@@ -267,29 +286,53 @@ int stats_chi_square(const struct PixelBuffer *pixels, struct StatResult *out) {
 
     result_reset(out, STAT_CHI_SQUARE);
 
-    size_t histogram[STAT_SAMPLE_LEVELS];
-    if (stats_sample_histogram(pixels, histogram) != 0)
+    if (!pixels || !pixels->samples)
         return -1;
 
-    size_t left[SAMPLE_PAIRS];
-    size_t right[SAMPLE_PAIRS];
+    if (pixel_color_channels(pixels->channels) == 0)
+        return -1;
 
-    for (size_t i = 0; i < SAMPLE_PAIRS; i++) {
-        left[i] = histogram[i * 2];
-        right[i] = histogram[i * 2 + 1];
+    const size_t slots = sample_slots(pixels);
+
+    size_t blocks = 0;
+    size_t embedded = 0;
+
+    for (size_t start = 0; start < slots; start += CHI_BLOCK_SAMPLES) {
+        size_t end = start + CHI_BLOCK_SAMPLES;
+        if (end > slots)
+            end = slots;
+
+        size_t histogram[STAT_SAMPLE_LEVELS];
+        sample_histogram_range(pixels, start, end, histogram);
+
+        size_t left[SAMPLE_PAIRS];
+        size_t right[SAMPLE_PAIRS];
+
+        for (size_t i = 0; i < SAMPLE_PAIRS; i++) {
+            left[i] = histogram[i * 2];
+            right[i] = histogram[i * 2 + 1];
+        }
+
+        const double probability = pov_probability(left, right, SAMPLE_PAIRS, NULL);
+
+        /* Fewer than two populated pairs spends every degree of freedom there
+         * is, and the block says nothing either way rather than saying clean. */
+        if (probability < 0.0)
+            continue;
+
+        blocks++;
+        if (probability > CHI_EMBEDDED)
+            embedded++;
     }
 
-    size_t tested = 0;
-    const double probability = pov_probability(left, right, SAMPLE_PAIRS, &tested);
-
-    out->population = tested;
-    if (probability < 0.0)
+    out->population = blocks;
+    if (blocks == 0)
         return 0;
 
     out->applicable = 1;
-    out->percent = probability * 100.0;
+    out->percent = 100.0 * (double)embedded / (double)blocks;
 
-    DEBUG("Chi-square over %zu pairs of values: %.4f", tested, probability);
+    DEBUG("Chi-square: %zu of %zu blocks look embedded", embedded, blocks);
     return 0;
 }
 
@@ -333,35 +376,54 @@ int stats_jpeg_histogram(const struct DctCoefficients *coefficients, struct Stat
 
     result_reset(out, STAT_JPEG_HISTOGRAM);
 
-    size_t histogram[STAT_COEFFICIENT_LEVELS];
-    if (stats_coefficient_histogram(coefficients, histogram) != 0)
+    if (!coefficients || !coefficients->values)
         return -1;
 
-    size_t left[COEFFICIENT_PAIRS];
-    size_t right[COEFFICIENT_PAIRS];
-    size_t pairs = 0;
+    size_t blocks = 0;
+    size_t embedded = 0;
 
-    for (int k = -STAT_COEFFICIENT_RANGE / 2; k < STAT_COEFFICIENT_RANGE / 2; k++) {
-        if (k == 0)
+    for (size_t start = 0; start < coefficients->count; start += CHI_BLOCK_COEFFICIENTS) {
+        size_t end = start + CHI_BLOCK_COEFFICIENTS;
+        if (end > coefficients->count)
+            end = coefficients->count;
+
+        size_t histogram[STAT_COEFFICIENT_LEVELS];
+        coefficient_histogram_range(coefficients, start, end, histogram);
+
+        size_t left[COEFFICIENT_PAIRS];
+        size_t right[COEFFICIENT_PAIRS];
+        size_t pairs = 0;
+
+        /* Pairs (2k, 2k + 1) whose both halves are inside the histogram, so the
+         * loop stops short of the top of the range: +10 is collected for the
+         * histogram's own sake but its partner, +11, is not. The pair holding 0
+         * and 1 is skipped because the codec cannot reach either. */
+        for (int k = -STAT_COEFFICIENT_RANGE / 2; k < STAT_COEFFICIENT_RANGE / 2; k++) {
+            if (k == 0)
+                continue;
+
+            left[pairs] = histogram[k * 2 + STAT_COEFFICIENT_ZERO];
+            right[pairs] = histogram[k * 2 + 1 + STAT_COEFFICIENT_ZERO];
+            pairs++;
+        }
+
+        const double probability = pov_probability(left, right, pairs, NULL);
+        if (probability < 0.0)
             continue;
 
-        left[pairs] = histogram[k * 2 + STAT_COEFFICIENT_ZERO];
-        right[pairs] = histogram[k * 2 + 1 + STAT_COEFFICIENT_ZERO];
-        pairs++;
+        blocks++;
+        if (probability > CHI_EMBEDDED)
+            embedded++;
     }
 
-    size_t tested = 0;
-    const double probability = pov_probability(left, right, pairs, &tested);
-
-    out->population = tested;
-
-    if (probability < 0.0)
+    out->population = blocks;
+    if (blocks == 0)
         return 0;
 
     out->applicable = 1;
-    out->percent = probability * 100.0;
+    out->percent = 100.0 * (double)embedded / (double)blocks;
 
-    DEBUG("DCT chi-square over %zu pairs of values: %.4f", tested, probability);
+    DEBUG("DCT chi-square: %zu of %zu blocks look embedded", embedded, blocks);
     return 0;
 }
 
@@ -377,14 +439,20 @@ int stats_run(enum FileType type, const struct PixelBuffer *pixels, const struct
     out->channels = pixels->channels;
     out->coefficients = coefficients ? coefficients->count : 0;
 
-    if (stats_lsb_ratio(pixels, &out->results[STAT_LSB_RATIO]) != 0)
-        return -1;
+    if (type == TYPE_PNG_IMAGE) {
+        if (stats_lsb_ratio(pixels, &out->results[STAT_LSB_RATIO]) != 0)
+            return -1;
 
-    if (stats_chi_square(pixels, &out->results[STAT_CHI_SQUARE]) != 0)
-        return -1;
+        if (stats_chi_square(pixels, &out->results[STAT_CHI_SQUARE]) != 0)
+            return -1;
 
-    if (stats_hod(pixels, &out->results[STAT_HOD]) != 0)
-        return -1;
+        if (stats_hod(pixels, &out->results[STAT_HOD]) != 0)
+            return -1;
+    } else {
+        result_reset(&out->results[STAT_LSB_RATIO], STAT_LSB_RATIO);
+        result_reset(&out->results[STAT_CHI_SQUARE], STAT_CHI_SQUARE);
+        result_reset(&out->results[STAT_HOD], STAT_HOD);
+    }
 
     result_reset(&out->results[STAT_JPEG_HISTOGRAM], STAT_JPEG_HISTOGRAM);
     if (coefficients && stats_jpeg_histogram(coefficients, &out->results[STAT_JPEG_HISTOGRAM]) != 0)
