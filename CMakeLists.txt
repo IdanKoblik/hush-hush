@@ -22,7 +22,7 @@ option(VEIL_BUILD_GUI          "Build the veil-gui desktop app"      OFF)
 option(VEIL_BUILD_WEB          "Build the wasm module" OFF)
 option(VEIL_BUILD_TESTS        "Build the test suite"              ${PROJECT_IS_TOP_LEVEL})
 option(VEIL_ENABLE_COVERAGE    "Instrument the build for gcov/lcov" OFF)
-option(HH_WARNINGS_AS_ERRORS "Turn compiler warnings into errors" OFF)
+option(VEIL_WARNINGS_AS_ERRORS "Turn compiler warnings into errors" OFF)
 
 if(PROJECT_IS_TOP_LEVEL)
     if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -55,11 +55,11 @@ target_compile_definitions(veil_options INTERFACE _POSIX_C_SOURCE=200809L)
 
 target_compile_options(veil_options INTERFACE
     $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wall;-Wextra>
-    $<$<AND:$<BOOL:${HH_WARNINGS_AS_ERRORS}>,$<C_COMPILER_ID:GNU,Clang,AppleClang>>:-Werror>
-    $<$<AND:$<BOOL:${HH_WARNINGS_AS_ERRORS}>,$<C_COMPILER_ID:MSVC>>:/WX>
+    $<$<AND:$<BOOL:${VEIL_WARNINGS_AS_ERRORS}>,$<C_COMPILER_ID:GNU,Clang,AppleClang>>:-Werror>
+    $<$<AND:$<BOOL:${VEIL_WARNINGS_AS_ERRORS}>,$<C_COMPILER_ID:MSVC>>:/WX>
 )
 
-if(veil_ENABLE_COVERAGE)
+if(VEIL_ENABLE_COVERAGE)
     if(NOT CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         message(FATAL_ERROR "VEIL_ENABLE_COVERAGE needs GCC or Clang")
     endif()
@@ -82,7 +82,7 @@ endif()
 # if(VEIL_BUILD_GUI)
 #     add_subdirectory(gui)
 # endif()
-# 
+#
 # if(VEIL_BUILD_WEB)
 #     add_subdirectory(web)
 # endif()
