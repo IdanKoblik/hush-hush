@@ -10,9 +10,20 @@ endif()
 
 find_package(PkgConfig QUIET)
 
-# The directory holding this one is what ends up on the include path, so headers
-# are reached as <core/...> both from inside the library and from its consumers.
 get_filename_component(VEIL_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" DIRECTORY)
+
+set(VEIL_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/include")
+file(MAKE_DIRECTORY "${VEIL_INCLUDE_DIR}")
+file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}" "${VEIL_INCLUDE_DIR}/veil"
+    SYMBOLIC RESULT veil_include_alias)
+
+if(NOT veil_include_alias EQUAL 0)
+    message(STATUS "Could not link core/ as veil/ (${veil_include_alias}); copying headers")
+    foreach(header IN LISTS VEIL_CORE_HEADERS)
+        file(RELATIVE_PATH relative "${CMAKE_CURRENT_SOURCE_DIR}" "${header}")
+        configure_file("${header}" "${VEIL_INCLUDE_DIR}/veil/${relative}" COPYONLY)
+    endforeach()
+endif()
 
 if(NOT TARGET veil::third_party)
     set(VEIL_THIRD_PARTY_DIR "" CACHE PATH
@@ -85,7 +96,7 @@ set_target_properties(veil_core PROPERTIES
 
 target_include_directories(veil_core
     PUBLIC
-        "$<BUILD_INTERFACE:${VEIL_ROOT_DIR}>"
+        "$<BUILD_INTERFACE:${VEIL_INCLUDE_DIR}>"
 )
 
 target_link_libraries(veil_core PUBLIC veil::third_party veil::sodium)
