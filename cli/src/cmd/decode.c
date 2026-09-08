@@ -38,7 +38,7 @@ static int exec(int argc, char *argv[]) {
         return EXEC_GENERIC_ERROR;
     }
 
-    char passphrase[PASSPHRASE_MAX];
+    PASSPHRASE(passphrase);
     if (read_passphrase("Passphrase (leave empty if the data is not encrypted): ", passphrase, sizeof(passphrase)) < 0) {
         ERROR("Failed to read the passphrase");
         return EXEC_GENERIC_ERROR;
@@ -54,27 +54,21 @@ static int exec(int argc, char *argv[]) {
         return EXEC_GENERIC_ERROR;
     }
 
-    sodium_memzero(passphrase, sizeof(passphrase));
+    DEBUG("Writing %zu bytes into %s", data_len, output_file);
+    int status = write_to_file_raw_data(output_file, data, data_len);
+
     if (data) {
         sodium_memzero(data, data_len);
         free(data);
     }
 
-    DEBUG("Writing %zu bytes into %s", data_len, output_file);
-    if (write_to_file_raw_data(output_file, data, data_len) < 0) {
+    if (status < 0) {
         ERROR("Failed to write the decoded data into %s", output_file);
-        goto fail;
+        return EXEC_GENERIC_ERROR;
     }
 
     INFO("Decoded successfully -> %s", output_file);
     return EXEC_OK;
-fail:
-    sodium_memzero(passphrase, sizeof(passphrase));
-    if (data) {
-        sodium_memzero(data, data_len);
-        free(data);
-    }
-    return EXEC_GENERIC_ERROR;
 }
 
 static const struct Command decode_cmd = {.name = "decode", .description = "Decodes the data hidden inside of a target file.", .usage = "Usage: decode <target_file> -o <output_file>\n", .exec = exec};

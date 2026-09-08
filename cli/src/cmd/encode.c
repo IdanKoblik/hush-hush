@@ -52,7 +52,7 @@ static int exec(int argc, char *argv[]) {
         return EXEC_GENERIC_ERROR;
     }
 
-    char passphrase[PASSPHRASE_MAX];
+    PASSPHRASE(passphrase);
     if (read_passphrase("Passphrase (leave empty to disable encryption): ", passphrase, sizeof(passphrase)) < 0) {
         ERROR("Failed to read the passphrase");
         return EXEC_GENERIC_ERROR;
@@ -105,12 +105,10 @@ static int exec(int argc, char *argv[]) {
         INFO("Verified %zu bytes read back from %s", data_len, output_file);
     }
 
-    sodium_memzero(passphrase, sizeof(passphrase));
     free(data);
 
     return EXEC_OK;
 fail:
-    sodium_memzero(passphrase, sizeof(passphrase));
     if (data)
         free(data);
     return EXEC_GENERIC_ERROR;

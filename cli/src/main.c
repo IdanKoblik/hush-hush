@@ -8,6 +8,22 @@
 
 #include "flag.h"
 
+#include <sys/resource.h>
+#if defined(__linux__)
+#include <sys/prctl.h>
+#endif
+
+static void harden_process(void) {
+    struct rlimit no_core = {.rlim_cur = 0, .rlim_max = 0};
+    if (setrlimit(RLIMIT_CORE, &no_core) != 0)
+        DEBUG("Could not disable core dumps");
+
+#if defined(__linux__) && defined(PR_SET_DUMPABLE)
+    if (prctl(PR_SET_DUMPABLE, 0, 0, 0, 0) != 0)
+        DEBUG("Could not clear the dumpable flag");
+#endif
+}
+
 int main(int argc, char *argv[]) {
     if (sodium_init() < 0) {
         ERROR("Failed to initialise libsodium");
@@ -20,6 +36,8 @@ int main(int argc, char *argv[]) {
         argc--;
         argv++;
     }
+
+    harden_process();
 
     if (argc < 2) {
         print_usage(argv[0]);
