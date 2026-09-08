@@ -78,11 +78,10 @@ if(VEIL_BUILD_CLI)
     add_subdirectory(cli)
 endif()
 
-#TODO
-# if(VEIL_BUILD_GUI)
-#     add_subdirectory(gui)
-# endif()
-#
+if(VEIL_BUILD_GUI)
+    add_subdirectory(gui)
+endif()
+
 if(VEIL_BUILD_WEB)
     add_subdirectory(web)
 endif()
