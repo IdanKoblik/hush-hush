@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Veil</title>
+    <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+    <header class="bar">
+        <h1>Veil</h1>
+        <p class="tagline">Steganography toolkit, running as WebAssembly. Nothing leaves this tab.</p>
+        <span id="status" class="status status--busy">loading module</span>
+    </header>
+
+    <main class="layout" id="main" hidden>
+      <div class="col">
+        <nav class="tabs" role="tablist">
+            <button class="tab tab--on" role="tab" id="tab-hide" aria-controls="panel-hide" aria-selected="true">Hide</button>
+            <button class="tab" role="tab" id="tab-reveal" aria-controls="panel-reveal" aria-selected="false">Reveal</button>
+        </nav>
+
+        <section class="panel" id="panel-hide" role="tabpanel" aria-labelledby="tab-hide">
+            <div class="field">
+                <label for="hide-carrier">Carrier image</label>
+                <input type="file" id="hide-carrier" accept="image/png,image/jpeg">
+                <p class="hint">PNG or JPEG. The image the payload is hidden inside.</p>
+            </div>
+
+            <div class="field">
+                <label for="hide-payload">Payload file</label>
+                <input type="file" id="hide-payload">
+                <p class="hint">Any file. This is what gets hidden.</p>
+            </div>
+
+            <div class="field">
+                <label for="hide-codec">Codec</label>
+                <select id="hide-codec">
+                    <option value="lsbm">lsbm &mdash; LSB matching</option>
+                    <option value="lsbr">lsbr &mdash; LSB replacement</option>
+                    <option value="dct">dct &mdash; DCT coefficients</option>
+                </select>
+                <p class="hint" id="hide-codec-hint">LSB codecs need a PNG carrier; JPEG always uses DCT.</p>
+            </div>
+
+            <div class="field">
+                <label for="hide-pass">Passphrase</label>
+                <input type="password" id="hide-pass" placeholder="leave empty to skip encryption" autocomplete="new-password">
+                <p class="hint">With a passphrase the payload is encrypted and scattered. Without one it is stored in the clear.</p>
+            </div>
+
+            <button class="go" id="hide-go" disabled>Hide payload</button>
+            <div class="result" id="hide-result" hidden></div>
+        </section>
+
+        <section class="panel" id="panel-reveal" role="tabpanel" aria-labelledby="tab-reveal" hidden>
+            <div class="field">
+                <label for="reveal-carrier">Encoded image</label>
+                <input type="file" id="reveal-carrier" accept="image/png,image/jpeg">
+                <p class="hint">The image that came out of Hide.</p>
+            </div>
+
+            <div class="field">
+                <label for="reveal-pass">Passphrase</label>
+                <input type="password" id="reveal-pass" placeholder="leave empty if none was used" autocomplete="off">
+            </div>
+
+            <button class="go" id="reveal-go" disabled>Reveal payload</button>
+            <div class="result" id="reveal-result" hidden></div>
+        </section>
+      </div>
+
+        <aside class="side">
+            <figure class="preview" id="preview" hidden>
+                <img id="preview-img" alt="Selected image preview">
+                <figcaption id="preview-meta"></figcaption>
+            </figure>
+
+            <section class="console">
+                <div class="console-bar">
+                    <h2>Log</h2>
+                    <label class="toggle"><input type="checkbox" id="verbose"> verbose</label>
+                    <button class="link" id="log-clear">clear</button>
+                </div>
+                <pre id="log" aria-live="polite"></pre>
+            </section>
+        </aside>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+</body>
+</html>

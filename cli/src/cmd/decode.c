@@ -1,12 +1,12 @@
 #include "../args.h"
 #include "../prompt.h"
 #include "command.h"
+#include <flag.h>
 #include <sodium/utils.h>
+#include <veil/decode.h>
 #include <veil/fs/file.h>
 #include <veil/handlers/image.h>
 #include <veil/log.h>
-#include <veil/decode.h>
-#include <flag.h>
 
 #include <sodium.h>
 #include <stdlib.h>

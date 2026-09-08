@@ -4,3 +4,5 @@ third_party/stb_image.h -diff
 third_party/stb_image_write.h -diff
 third_party/flag.h -diff
 third_party/portable-file-dialogs.h -diff
+third_party/cJSON.h -diff
+third_party/cJSON.c -diff

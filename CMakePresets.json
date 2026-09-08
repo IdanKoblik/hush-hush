@@ -10,7 +10,10 @@
             "name": "base",
             "hidden": true,
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}"
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "VEIL_BUILD_WEB": "OFF"
+            }
         },
         {
             "name": "dev",
@@ -20,7 +23,6 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "VEIL_BUILD_CLI": "ON",
                 "VEIL_BUILD_GUI": "ON",
-                "VEIL_BUILD_WEB": "ON",
                 "VEIL_BUILD_TESTS": "ON"
             }
         },
@@ -32,7 +34,30 @@
                 "CMAKE_BUILD_TYPE": "Release",
                 "VEIL_BUILD_CLI": "ON",
                 "VEIL_BUILD_GUI": "ON",
-                "VEIL_BUILD_WEB": "ON",
+                "VEIL_WARNINGS_AS_ERRORS": "ON",
+                "VEIL_BUILD_TESTS": "OFF"
+            }
+        },
+        {
+            "name": "cli",
+            "displayName": "Optimised build of the command line app only",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "VEIL_BUILD_CLI": "ON",
+                "VEIL_BUILD_GUI": "OFF",
+                "VEIL_WARNINGS_AS_ERRORS": "ON",
+                "VEIL_BUILD_TESTS": "OFF"
+            }
+        },
+        {
+            "name": "gui",
+            "displayName": "Optimised build of the desktop app only",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "VEIL_BUILD_CLI": "OFF",
+                "VEIL_BUILD_GUI": "ON",
                 "VEIL_WARNINGS_AS_ERRORS": "ON",
                 "VEIL_BUILD_TESTS": "OFF"
             }
@@ -57,6 +82,14 @@
         {
             "name": "release",
             "configurePreset": "release"
+        },
+        {
+            "name": "cli",
+            "configurePreset": "cli"
+        },
+        {
+            "name": "gui",
+            "configurePreset": "gui"
         },
         {
             "name": "coverage",
