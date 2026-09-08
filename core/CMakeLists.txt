@@ -83,6 +83,22 @@ if(NOT TARGET veil::sodium)
     endif()
 endif()
 
+if(NOT TARGET veil::jpeg)
+    find_package(JPEG QUIET)
+
+    if(NOT JPEG_FOUND)
+        message(FATAL_ERROR
+            "Could not find libjpeg. Install it (Arch: libjpeg-turbo, Debian: "
+            "libjpeg-dev, macOS: brew install jpeg-turbo) or point "
+            "JPEG_ROOT at an installation.")
+    endif()
+
+    message(STATUS "Resolved libjpeg ${JPEG_VERSION} to ${JPEG_LIBRARIES}")
+    add_library(veil_jpeg INTERFACE)
+    add_library(veil::jpeg ALIAS veil_jpeg)
+    target_link_libraries(veil_jpeg INTERFACE JPEG::JPEG)
+endif()
+
 add_library(veil_core STATIC
     ${VEIL_CORE_SOURCES}
     ${VEIL_CORE_HEADERS}
@@ -99,7 +115,7 @@ target_include_directories(veil_core
         "$<BUILD_INTERFACE:${VEIL_INCLUDE_DIR}>"
 )
 
-target_link_libraries(veil_core PUBLIC veil::third_party veil::sodium)
+target_link_libraries(veil_core PUBLIC veil::options veil::third_party veil::sodium veil::jpeg)
 
 if(VEIL_BUILD_TESTS)
     add_subdirectory(tests)

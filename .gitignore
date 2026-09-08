@@ -4,7 +4,6 @@ build/*
 coverage/*
 hh
 compile_commands.json
-# Personal presets layered on top of CMakePresets.json.
 CMakeUserPresets.json
 
 # Python
@@ -49,6 +48,7 @@ CMakeUserPresets.json
 *.hex
 
 # Debug files
+vgcore.*
 *.dSYM/
 *.su
 *.idb
