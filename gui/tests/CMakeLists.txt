@@ -4,6 +4,5 @@ file(GLOB_RECURSE VEIL_GUI_TEST_SOURCES CONFIGURE_DEPENDS
 add_executable(veil_gui_tests ${VEIL_GUI_TEST_SOURCES})
 target_link_libraries(veil_gui_tests PRIVATE veil::gui veil::testing)
 
-# No window is opened here, so the suite runs on a headless machine. Only the
-# parts of the GUI that hold no ImGui state belong in it.
+# No window is opened here, so the suite runs on a headless machine.
 add_test(NAME gui COMMAND veil_gui_tests)

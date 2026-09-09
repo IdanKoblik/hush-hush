@@ -1,74 +1,79 @@
-#include "src/theme.hpp"
-#include <GLFW/glfw3.h>
+#include "Navbar.hpp"
+#include "raylib.h"
+#include "render.hpp"
+#include "theme.hpp"
 #include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-#include <implot.h>
-#include <veil/log.h>
+#include <memory>
+#include <rlImGui.h>
+#include <vector>
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
-#define WINDOW_TITLE "veil"
+#define WINDOW_TITLE "Veil"
 
 namespace {
 
-void on_glfw_error(int code, const char *description) {
-    ERROR("[-] GLFW error %d: %s\n", code, description);
-}
+    std::vector<std::unique_ptr<ui::Renderable>> renderables;
+
+    void init_renderables() {
+        renderables.emplace_back(std::make_unique<ui::Navbar>());
+    }
 
 } // namespace
 
 int main(void) {
-    glfwSetErrorCallback(on_glfw_error);
-    if (!glfwInit()) {
-        ERROR("Failed to init GLFW");
-        return 1;
-    }
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
+    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
+    SetTargetFPS(60);
+    SetExitKey(KEY_NULL);
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    rlImGuiBeginInitImGui();
 
-    GLFWwindow *window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, nullptr, nullptr);
-    if (!window) {
-        ERROR("Failed to create the window");
-        goto fail;
-    }
-
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1); // Vsync
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImPlot::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    io.IniFilename = nullptr;
     theme::apply();
 
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 330");
+#if defined(__linux__)
+    const char *fonts[] = {
+        "/usr/share/fonts/TTF/JetBrainsMonoNerdFont-Regular.ttf",
+        "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
+        "/usr/share/fonts/liberation/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/noto/NotoSansMono-Regular.ttf",
+    };
 
-    // Scoped so the texture is released while the GL context is still alive.
-    {
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();
-            glfwSwapBuffers(window);
+    for (const char *path : fonts) {
+        if (FileExists(path)) {
+            io.Fonts->AddFontFromFileTTF(path, 20.0f);
+            break;
         }
+    }
+#endif
 
-        glfwSetDropCallback(window, nullptr);
-        glfwSetWindowUserPointer(window, nullptr);
+    ImGui::GetStyle().FontSizeBase = 20.0f;
+
+    rlImGuiEndInitImGui();
+
+    init_renderables();
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(Color{26, 28, 33, 255});
+
+        rlImGuiBegin();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 9.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(18.0f, 6.0f));
+
+        for (auto& r : renderables)
+             r->render();
+
+        ImGui::PopStyleVar(2);
+
+        rlImGuiEnd();
+        EndDrawing();
     }
 
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImPlot::DestroyContext();
-    ImGui::DestroyContext();
+    rlImGuiShutdown();
+    CloseWindow();
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
     return 0;
-fail:
-    if (window)
-        glfwDestroyWindow(window);
-
-    glfwTerminate();
-    return 1;
 }
