@@ -28,6 +28,17 @@ if(VEIL_THIRD_PARTY_SOURCES)
         $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-w>
         $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-w>
     )
+
+    # raylib bundles its own copy of stb_image/stb_image_write, so anything
+    # linking both it and veil::core sees every stb symbol defined twice.
+    # The versions match, so emit ours weakly and let raylib's win when both
+    # are present; on its own ours still resolves the reference.
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+        set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/stb.c"
+            TARGET_DIRECTORY veil_third_party
+            PROPERTIES COMPILE_DEFINITIONS
+                "STBIDEF=__attribute__((weak));STBIWDEF=__attribute__((weak))")
+    endif()
 else()
     add_library(veil_third_party INTERFACE)
     set(veil_third_party_scope INTERFACE)

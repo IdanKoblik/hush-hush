@@ -19,10 +19,10 @@ struct PixelCarrier {
 static size_t color_channels(const struct ImageCtx *img) {
     size_t channels = (size_t)img->channels;
 
+    // Skip alpha channel
     return (channels == 2 || channels == 4) ? channels - 1 : channels;
 }
 
-/* Skip alpha channel */
 static size_t slot_to_pixel(const struct PixelCarrier *carrier, size_t slot) {
     if (carrier->colors == carrier->channels)
         return slot;

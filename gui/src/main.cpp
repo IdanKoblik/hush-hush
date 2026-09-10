@@ -1,37 +1,21 @@
-#include "Navbar.hpp"
+#include "ImageDocument.hpp"
 #include "raylib.h"
-#include "render.hpp"
 #include "theme.hpp"
+#include <algorithm>
 #include <imgui.h>
 #include <memory>
 #include <rlImGui.h>
+#include <stdexcept>
 #include <vector>
+#include <veil/fs/file.h>
+#include <veil/log.h>
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
 #define WINDOW_TITLE "Veil"
 
-namespace {
-
-    std::vector<std::unique_ptr<ui::Renderable>> renderables;
-
-    void init_renderables() {
-        renderables.emplace_back(std::make_unique<ui::Navbar>());
-    }
-
-} // namespace
-
-int main(void) {
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
-    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
-    SetTargetFPS(60);
-    SetExitKey(KEY_NULL);
-
-    rlImGuiBeginInitImGui();
-
+static void load_fonts(void) {
     ImGuiIO &io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    theme::apply();
 
 #if defined(__linux__)
     const char *fonts[] = {
@@ -41,35 +25,68 @@ int main(void) {
         "/usr/share/fonts/noto/NotoSansMono-Regular.ttf",
     };
 
-    for (const char *path : fonts) {
-        if (FileExists(path)) {
-            io.Fonts->AddFontFromFileTTF(path, 20.0f);
-            break;
-        }
-    }
+    for (const char *path : fonts)
+        if (FileExists(path) && io.Fonts->AddFontFromFileTTF(path, 20.0f))
+            return;
 #endif
+
+    io.Fonts->AddFontDefault();
+}
+
+int main(void) {
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
+    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
+    SetTargetFPS(60);
+    SetExitKey(KEY_NULL);
+
+    rlImGuiSetLoadFontsCallback(load_fonts);
+    rlImGuiBeginInitImGui();
+
+    ImGuiIO &io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    theme::apply();
 
     ImGui::GetStyle().FontSizeBase = 20.0f;
 
     rlImGuiEndInitImGui();
 
-    init_renderables();
-    while (!WindowShouldClose()) {
-        BeginDrawing();
-        ClearBackground(Color{26, 28, 33, 255});
+    const ImGuiViewport *viewport = ImGui::GetMainViewport();
 
-        rlImGuiBegin();
+    // Scoped so the document's texture is released while the GL context still exists.
+    {
+        ImageDocument document;
+        try {
+            document.open("/home/idank/Pictures/78589468.jpg"); // TODO
+        } catch (const std::exception &e) {
+            ERROR("%s", e.what());
+        }
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 9.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(18.0f, 6.0f));
+        while (!WindowShouldClose()) {
+            BeginDrawing();
+            ClearBackground(Color{26, 28, 33, 255});
 
-        for (auto& r : renderables)
-             r->render();
+            rlImGuiBegin();
 
-        ImGui::PopStyleVar(2);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 9.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(18.0f, 6.0f));
 
-        rlImGuiEnd();
-        EndDrawing();
+            ImGui::SetNextWindowPos(viewport->WorkPos);
+            ImGui::SetNextWindowSize(viewport->WorkSize);
+            ImGui::Begin("##workspace", nullptr,
+                         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                         ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
+                         ImGuiWindowFlags_NoBackground
+            );
+
+            document.render();
+
+            ImGui::End();
+
+            ImGui::PopStyleVar(2);
+
+            rlImGuiEnd();
+            EndDrawing();
+        }
     }
 
     rlImGuiShutdown();

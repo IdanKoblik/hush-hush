@@ -1,6 +1,7 @@
 #pragma once
 
 #include <imgui.h>
+
 namespace theme {
 
 constexpr ImVec4 bar_bg = ImVec4(0.07f, 0.07f, 0.09f, 1.00f);
