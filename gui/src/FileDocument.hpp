@@ -17,16 +17,14 @@ protected:
     std::string name;
     enum FileType file_type;
 
-    void draw_status_bar(void) {
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, theme::bar_bg);
-        ImGui::BeginChild("##status", ImVec2(0, ImGui::GetTextLineHeightWithSpacing()));
-        ImGui::PushStyleColor(ImGuiCol_Text, theme::text_dim);
-        ImGui::Text(this->summary().c_str());
+    void file_menu(void) override {
+        ImGui::Separator();
+        if (ImGui::MenuItem("Copy path", nullptr, false, !this->path.empty()))
+            ImGui::SetClipboardText(this->path.c_str());
+    };
 
-        // TODO right side 
-
-        ImGui::PopStyleColor();
-        ImGui::EndChild();
-        ImGui::PopStyleColor();
+    void navbar_center(void) override {
+        if (!this->name.empty())
+            this->navbar_label(this->name.c_str());
     };
 };

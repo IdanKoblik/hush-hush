@@ -27,17 +27,19 @@ public:
         this->state.right_w = clampf(this->state.right_w, 180.0f, room - this->state.left_w);
 
         ImGui::BeginChild("##source", ImVec2(this->state.left_w, body), ImGuiChildFlags_Borders);
-        this->section_label("PREVIEW");
-        ImGui::Spacing();
-        this->preview.draw(ImGui::GetContentRegionAvail().x);
-        ImGui::Spacing();
-        ImGui::Spacing();
+        if (this->show_preview) {
+            this->section_label("PREVIEW");
+            ImGui::Spacing();
+            this->preview.draw(ImGui::GetContentRegionAvail().x * this->state.zoom);
+            ImGui::Spacing();
+            ImGui::Spacing();
+        }
+
         this->section_label("PROPERTIES");
         ImGui::Spacing();
         ImGui::TextUnformatted(this->name.c_str());
         ImGui::Text("%s, %zu bytes", file_type_name(this->file_type), this->bytes.size());
-        ImGui::Text("%d x %d, %d channels", this->pixels.buffer.width, this->pixels.buffer.height,
-                    this->pixels.buffer.channels);
+        ImGui::Text("%d x %d, %d channels", this->pixels.buffer.width, this->pixels.buffer.height, this->pixels.buffer.channels);
         ImGui::EndChild();
     
         this->draw_status_bar();
@@ -79,7 +81,17 @@ public:
         ss << this->path << "  | " << file_type_name(this->file_type);
         return ss.str();
     };
+protected:
+    void extra_menus(void) override {
+        if (ImGui::BeginMenu("Image")) {
+            ImGui::MenuItem("Preview", nullptr, &this->show_preview);
+            ImGui::EndMenu();
+        }
+    };
+
 private:
+    bool show_preview = true;
+
     Pixels pixels;
     std::vector<unsigned char> bytes;
 
