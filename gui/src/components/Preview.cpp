@@ -1,5 +1,5 @@
-#include "Preview.hpp"
-#include "theme.hpp"
+#include "components/Preview.hpp"
+#include "app/theme.hpp"
 
 Preview::~Preview() {
     this->unload();

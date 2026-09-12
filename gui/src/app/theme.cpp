@@ -1,20 +1,23 @@
 #include "theme.hpp"
+#include <veil/byte.h>
 
 namespace theme {
 
 ImVec4 byte_color(unsigned char byte) {
-    if (byte == 0x00)
+    switch (classify_byte(byte)) {
+    case BYTE_ZERO:
         return byte_zero;
-    if (byte == 0xFF)
+    case BYTE_FILLED:
         return byte_filled;
-    if (byte == ' ' || byte == '\t' || byte == '\n' || byte == '\r')
+    case BYTE_WHITESPACE:
         return byte_whitespace;
-    if (byte >= 32 && byte <= 126)
+    case BYTE_PRINTABLE:
         return byte_printable;
-    if (byte < 32 || byte == 0x7F)
+    case BYTE_CONTROL:
         return byte_control;
-
-    return byte_other;
+    default:
+        return byte_other;
+    }
 }
 
 void apply(void) {

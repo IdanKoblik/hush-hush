@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Document.hpp"
+#include "documents/Document.hpp"
 #include <string>
 #include <veil/fs/file.h>
 
@@ -25,6 +25,6 @@ protected:
 
     void navbar_center(void) override {
         if (!this->name.empty())
-            this->navbar_label(this->name.c_str());
+            ui::centered_label(this->name.c_str());
     };
 };

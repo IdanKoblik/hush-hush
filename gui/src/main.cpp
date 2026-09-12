@@ -1,6 +1,6 @@
-#include "ImageDocument.hpp"
+#include "app/theme.hpp"
+#include "documents/ImageDocument.hpp"
 #include "raylib.h"
-#include "theme.hpp"
 #include <algorithm>
 #include <imgui.h>
 #include <memory>

@@ -1,7 +1,8 @@
 #pragma once
 
 #include <stddef.h>
-#include "../codecs/codec.h"
+#include <veil/byte.h>
+#include <veil/codecs/codec.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,17 +24,6 @@ void pixels_free(struct PixelBuffer *pixels);
 
 size_t pixel_color_channels(int channels);
 size_t pixel_slot_to_sample(size_t slot, size_t colors, size_t channels);
-
-enum ByteClass {
-    BYTE_ZERO,
-    BYTE_FILLED,
-    BYTE_WHITESPACE,
-    BYTE_PRINTABLE,
-    BYTE_CONTROL,
-    BYTE_OTHER,
-};
-
-enum ByteClass classify_byte(unsigned char byte);
 
 #ifdef __cplusplus
 }

@@ -1,23 +1,12 @@
 #pragma once
 
-#include <imgui.h>
-#include <rlImGui.h>
-#include <veil/analysis/inspect.h>
-#include <math.hpp>
+#include "app/math.hpp"
+#include "model/Pixels.hpp"
 #include <algorithm>
 #include <cstdlib>
-
-struct Pixels {
-    struct PixelBuffer buffer {};
-
-    Pixels() = default;
-    Pixels(const Pixels &) = delete;
-    Pixels &operator=(const Pixels &) = delete;
-
-    ~Pixels() {
-        pixels_free(&this->buffer);
-    }
-};
+#include <imgui.h>
+#include <rlImGui.h>
+#include <veil/analysis/image/inspect.h>
 
 class Preview {
 public:
